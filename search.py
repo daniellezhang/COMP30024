@@ -129,8 +129,18 @@ def possible_action(piece_index, pieces, blocks, colour):
 
     return actions
 
+def heuristic_distance(current_position, colour):
+    """function to calculate the minimum hexagonal distance between given position
+    and exit positions"""
+    exit_positions = exit_dict[colour]
+    dist_list = []
+    for position in exit_positions:
+        dist = max(abs(current_position[0]-position[0]),
+        abs(current_position[0]+current_position[0]-position[0]-position[1]),
+        abs(current_position[1]-position[1]))
+        dist_list.append(dist)
 
-
+    return min(dist_list)
 
 def main():
     """with open(sys.argv[1]) as file:
@@ -138,6 +148,7 @@ def main():
     actions = possible_action(1,[[0,0],[3,-3],[-2,1]],[[-1,-2],[-1,1],[1,1],[3,-1]],"red")
     for action in actions:
         print(action.action, action.previous_position, action.new_position)
+    print(heuristic_distance([1,-0],"blue"))
 
 
     # TODO: Search for and output winning sequence of moves
