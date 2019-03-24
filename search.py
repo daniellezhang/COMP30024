@@ -7,7 +7,7 @@ Authors: Danielle Zhang & Ishan Sodhi
 
 import sys
 import json
-from queue import PriorityQueue
+import queue
 
 
 """dictionary of every colour's exiting coordinates"""
@@ -176,8 +176,10 @@ def goal_check(pieces):
 #Positions would be the starting positions of all the players.
 def A_Star(positions,blocks, colour):
 
-    frontier = PriorityQueue()
-    frontier.put(str(positions), 0)
+    frontier = queue.PriorityQueue()
+    item = (0,positions)
+    #frontier.put(positions,0)
+    frontier.put(item)
     came_from = {}
 
     cost_so_far = {}
@@ -185,24 +187,24 @@ def A_Star(positions,blocks, colour):
     cost_so_far[str(positions)] = 0
 
     while not frontier.empty():
+
         current = frontier.get()
-        print(current)
 
         #Goal check is going to return if all the pieces have exited the board
-        if goal_check(current):
+        if goal_check(current[1]):
             break
 
-        for state in next_states(current, blocks, colour):
+        for state in next_states(current[1], blocks, colour):
             new_position = state[0]
             key = str(new_position)
-            new_cost = cost_so_far[str(current)] + 1
+            new_cost = cost_so_far[str(current[1])] + 1
 
             if key not in cost_so_far or new_cost < cost_so_far[key]:
                 cost_so_far[key] = new_cost
                 priority = total_heuristic(new_position,colour)
-                print(priority)
-                frontier.put(new_position,priority)
-                came_from[key] = (current, state[1])
+                item = (priority,new_position)
+                frontier.put(item)
+                came_from[key] = (current[1], state[1])
 
     return came_from
 
@@ -213,8 +215,11 @@ def main():
     """with open(sys.argv[1]) as file:
         data = json.load(file)"""
     solution = A_Star([[0,0],[3,-3],[-2,1]],[[-1,-2],[-1,1],[1,1],[3,-1]],"red")
-
-
+    goal = ["REMOVED"]*3
+    while goal or previous_state:
+        previous_state = solution[str(goal)]
+        print(goal, previous_state[0])
+        goal = previous_state[0]
 
     # TODO: Search for and output winning sequence of moves
     # ...
