@@ -6,7 +6,7 @@ Authors: Danielle Zhang & Ishan Sodhi
 """
 
 import sys
-import j
+import json
 from queue import PriorityQueue
 
 
@@ -20,6 +20,7 @@ class Operation(object):
         self.previous_position = pos1
         self.new_position = pos2
         self.action = action
+
 
 def ring_generator(position, ring_no = 1):
 
@@ -55,7 +56,7 @@ def ring_generator(position, ring_no = 1):
 
     return coordinates
 
-#Player will be the tuple of coordinates
+#return a list of positions that are neighbours to the given position
 def neighbours(player):
 
     possible_moves = []
@@ -90,7 +91,7 @@ def possible_action(piece_index, pieces, blocks, colour):
     exit_list = exit_dict[colour]
     for pos in exit_list:
         if pos == current_piece:
-            actions.append(Operation(current_piece,None,"EXIT"))
+            actions.append(Operation(current_piece,"REMOVED","EXIT"))
 
 
     #go through the list of neighbours to find possible moves
@@ -143,29 +144,67 @@ def heuristic_distance(current_position, colour):
 
     return min(dist_list)
 
+"""function to return all the posssible states and the corresponding operation obejcts"""
+def next_states(pieces, blocks, colour):
+    output = []
+    for i in range(len(pieces)):
+        if pieces[i] != "REMOVED":
+            actions = possible_action(i, pieces, blocks, colour)
+            for operation in actions:
+                new_state = pieces[:]
+                new_state[i] = operation.new_position
+                output.append((new_state,operation))
+
+    return output
+
+
+def total_heuristic(pieces, colour):
+    """function that sum the heuristic distance of every piece"""
+    sum = 0
+    for piece in pieces:
+        if piece != "REMOVED":
+            sum += heuristic_distance(piece,colour)
+    return sum
+
+
+def goal_check(pieces):
+    for piece in pieces:
+        if piece != "REMOVED":
+            return False
+    return True
+
 #Positions would be the starting positions of all the players.
-def A_Star(Positions):
+def A_Star(positions,blocks, colour):
 
     frontier = PriorityQueue()
-    frontier.put(Positions, 0)
+    frontier.put(str(positions), 0)
     came_from = {}
 
     cost_so_far = {}
-    came_from[Positions] = None
-    cost_so_far[Positions] = 0
+    came_from[str(positions)] = None
+    cost_so_far[str(positions)] = 0
 
     while not frontier.empty():
         current = frontier.get()
+        print(current)
 
         #Goal check is going to return if all the pieces have exited the board
-        if goal_check(current[0]):
+        if goal_check(current):
             break
 
-        for state in next_states[0]:
-            for next in state:
-                new_cost = cost_so_far[state] + 1
-                if state not in cost_so_far or new_cost < cost_so_far[state]:
-                    cost_so_far[state] = new_cost
+        for state in next_states(current, blocks, colour):
+            new_position = state[0]
+            key = str(new_position)
+            new_cost = cost_so_far[str(current)] + 1
+
+            if key not in cost_so_far or new_cost < cost_so_far[key]:
+                cost_so_far[key] = new_cost
+                priority = total_heuristic(new_position,colour)
+                print(priority)
+                frontier.put(new_position,priority)
+                came_from[key] = (current, state[1])
+
+    return came_from
 
 
 
@@ -173,10 +212,8 @@ def A_Star(Positions):
 def main():
     """with open(sys.argv[1]) as file:
         data = json.load(file)"""
-    actions = possible_action(1,[[0,0],[3,-3],[-2,1]],[[-1,-2],[-1,1],[1,1],[3,-1]],"red")
-    for action in actions:
-        print(action.action, action.previous_position, action.new_position)
-    print(heuristic_distance([1,-0],"blue"))
+    solution = A_Star([[0,0],[3,-3],[-2,1]],[[-1,-2],[-1,1],[1,1],[3,-1]],"red")
+
 
 
     # TODO: Search for and output winning sequence of moves
