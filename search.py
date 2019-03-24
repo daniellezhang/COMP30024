@@ -6,7 +6,8 @@ Authors: Danielle Zhang & Ishan Sodhi
 """
 
 import sys
-import json
+import j
+from queue import PriorityQueue
 
 
 """dictionary of every colour's exiting coordinates"""
@@ -141,6 +142,33 @@ def heuristic_distance(current_position, colour):
         dist_list.append(dist)
 
     return min(dist_list)
+
+#Positions would be the starting positions of all the players.
+def A_Star(Positions):
+
+    frontier = PriorityQueue()
+    frontier.put(Positions, 0)
+    came_from = {}
+
+    cost_so_far = {}
+    came_from[Positions] = None
+    cost_so_far[Positions] = 0
+
+    while not frontier.empty():
+        current = frontier.get()
+
+        #Goal check is going to return if all the pieces have exited the board
+        if goal_check(current[0]):
+            break
+
+        for state in next_states[0]:
+            for next in state:
+                new_cost = cost_so_far[state] + 1
+                if state not in cost_so_far or new_cost < cost_so_far[state]:
+                    cost_so_far[state] = new_cost
+
+
+
 
 def main():
     """with open(sys.argv[1]) as file:
