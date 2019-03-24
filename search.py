@@ -14,13 +14,6 @@ exit_dict = {"red":[[3,-3],[3,-2],[3,-1],[3,0]],
 "green":[[-3,3],[-2,3],[-1,3],[-0,3]],
 "blue":[[-3,0],[-2,-1],[-1,-2],[0,-3]]}
 
-class Node(object):
-    def __init__(self):
-        self.children = []
-        self.data = None
-        self.cost = None
-        self.heuristic_distance = None
-
 class Operation(object):
     def __init__(self, pos1, pos2, action):
         self.previous_position = pos1
@@ -135,6 +128,7 @@ def possible_action(piece_index, pieces, blocks, colour):
             actions.append(Operation(current_piece, neighbour,"MOVE"))
 
     return actions
+
 
 
 
