@@ -11,12 +11,12 @@ from queue import PriorityQueue
 
 
 """dictionary of every colour's exiting coordinates"""
-exit_dict = {"red":[[3,-3],[3,-2],[3,-1],[3,0]],
-"green":[[-3,3],[-2,3],[-1,3],[-0,3]],
-"blue":[[-3,0],[-2,-1],[-1,-2],[0,-3]]}
+exit_dict = {"red":((3,-3),(3,-2),(3,-1),(3,0)),
+"green":((-3,3),(-2,3),(-1,3),(-0,3)),
+"blue":((-3,0),(-2,-1),(-1,-2),(0,-3))}
 
 """coordinate marker for pieces that have been removed from the board"""
-removed = [-5,-5]
+removed = (-5,-5)
 
 class Operation(object):
     def __init__(self, pos1, pos2, action):
@@ -55,7 +55,7 @@ def ring_generator(position, ring_no = 1):
 
     #To combine X and Y
     for i in range(0, len(x_coordinates)):
-        coordinates.append([x_coordinates[i], y_coordinates[i]])
+        coordinates.append((x_coordinates[i], y_coordinates[i]))
 
     return coordinates
 
@@ -63,13 +63,12 @@ def ring_generator(position, ring_no = 1):
 def neighbours(player):
 
     possible_moves = []
-    forbidden_Coords = ring_generator([0, 0], 4)
+    forbidden_Coords = ring_generator((0, 0), 4)
     moves = ring_generator(player)
 
     for i in moves:
         if not (i in forbidden_Coords):
             possible_moves.append(i)
-
     return possible_moves
 
 
@@ -104,7 +103,7 @@ def possible_action(piece_index, pieces, blocks, colour):
         if is_occupied[i]:
             q_difference = neighbour[0]-current_piece[0]
             r_difference = neighbour[1]-current_piece[1]
-            jump_pos = [neighbour[0]+q_difference, neighbour[1]+r_difference]
+            jump_pos = (neighbour[0]+q_difference, neighbour[1]+r_difference)
             #check if the new position after a jump action is on the board
             out_of_board = False
             invalid_position = ring_generator([0,0],4)
@@ -154,8 +153,14 @@ def next_states(pieces, blocks, colour):
         if pieces[i] != removed:
             actions = possible_action(i, pieces, blocks, colour)
             for operation in actions:
+
                 new_state = pieces[:]
+
+                new_state = list(new_state)
+
                 new_state[i] = operation.new_position
+                new_state = tuple(new_state)
+
                 output.append((new_state,operation))
 
     return output
@@ -186,8 +191,8 @@ def A_Star(positions,blocks, colour):
     came_from = {}
 
     cost_so_far = {}
-    came_from[str(positions)] = None
-    cost_so_far[str(positions)] = 0
+    came_from[positions] = None
+    cost_so_far[positions] = 0
 
     while not frontier.empty():
 
@@ -199,15 +204,15 @@ def A_Star(positions,blocks, colour):
 
         for state in next_states(current[1], blocks, colour):
             new_position = state[0]
-            key = str(new_position)
-            new_cost = cost_so_far[str(current[1])] + 1
 
-            if key not in cost_so_far or new_cost < cost_so_far[key]:
-                cost_so_far[key] = new_cost
+            new_cost = cost_so_far[current[1]] + 1
+
+            if new_position not in cost_so_far or new_cost < cost_so_far[new_position]:
+                cost_so_far[new_position] = new_cost
                 priority = total_heuristic(new_position,colour)
                 item = (priority,new_position)
                 frontier.put(item)
-                came_from[key] = (current[1], state[1])
+                came_from[new_position] = (current[1], state[1])
 
     return came_from
 
@@ -218,11 +223,13 @@ def A_Star(positions,blocks, colour):
 def main():
     """with open(sys.argv[1]) as file:
         data = json.load(file)"""
-    pieces = [[0,0],[0,-1],[-2,1]]
-    blocks = [[-1,0],[-1,1],[1,1],[3,-1]]
+    pieces = ((0,0),(0,-1),(-2,1))
+    blocks = ((-1,0),(-1,1),(1,1),(3,-1))
     colour = "red"
     solution = A_Star(pieces,blocks,colour)
     goal = [removed]*3
+    goal = tuple(goal)
+
     board_dict = {}
     output = []
 
@@ -233,7 +240,7 @@ def main():
     print_board(board_dict)
 
     while goal or previous_state:
-        previous_state = solution[str(goal)]
+        previous_state = solution[goal]
         if previous_state != None:
             #print(goal, previous_state[0])
             output.append((goal, previous_state[1].previous_position,
