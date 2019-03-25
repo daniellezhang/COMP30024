@@ -7,13 +7,16 @@ Authors: Danielle Zhang & Ishan Sodhi
 
 import sys
 import json
-import queue
+from queue import PriorityQueue
 
 
 """dictionary of every colour's exiting coordinates"""
 exit_dict = {"red":[[3,-3],[3,-2],[3,-1],[3,0]],
 "green":[[-3,3],[-2,3],[-1,3],[-0,3]],
 "blue":[[-3,0],[-2,-1],[-1,-2],[0,-3]]}
+
+"""coordinate marker for pieces that have been removed from the board"""
+removed = [-5,-5]
 
 class Operation(object):
     def __init__(self, pos1, pos2, action):
@@ -91,7 +94,7 @@ def possible_action(piece_index, pieces, blocks, colour):
     exit_list = exit_dict[colour]
     for pos in exit_list:
         if pos == current_piece:
-            actions.append(Operation(current_piece,"REMOVED","EXIT"))
+            actions.append(Operation(current_piece,removed,"EXIT"))
 
 
     #go through the list of neighbours to find possible moves
@@ -142,14 +145,13 @@ def heuristic_distance(current_position, colour):
         abs(current_position[1]-position[1]))
         dist_list.append(dist)
 
-
     return min(dist_list)
 
 """function to return all the posssible states and the corresponding operation obejcts"""
 def next_states(pieces, blocks, colour):
     output = []
     for i in range(len(pieces)):
-        if pieces[i] != "REMOVED":
+        if pieces[i] != removed:
             actions = possible_action(i, pieces, blocks, colour)
             for operation in actions:
                 new_state = pieces[:]
@@ -163,7 +165,7 @@ def total_heuristic(pieces, colour):
     """function that sum the heuristic distance of every piece"""
     sum = 0
     for piece in pieces:
-        if piece != "REMOVED":
+        if piece != removed:
             sum += heuristic_distance(piece,colour)
     return sum
 
@@ -177,10 +179,8 @@ def goal_check(pieces):
 #Positions would be the starting positions of all the players.
 def A_Star(positions,blocks, colour):
 
-    frontier = queue.PriorityQueue()
-    item = (0,positions)
-    #frontier.put(positions,0)
-    frontier.put(item)
+    frontier = PriorityQueue()
+    frontier.put(positions, 0)
     came_from = {}
 
     cost_so_far = {}
@@ -188,24 +188,23 @@ def A_Star(positions,blocks, colour):
     cost_so_far[str(positions)] = 0
 
     while not frontier.empty():
-
         current = frontier.get()
+        print(current)
 
         #Goal check is going to return if all the pieces have exited the board
-        if goal_check(current[1]):
+        if goal_check(current):
             break
 
-        for state in next_states(current[1], blocks, colour):
+        for state in next_states(current, blocks, colour):
             new_position = state[0]
             key = str(new_position)
-            new_cost = cost_so_far[str(current[1])] + 1
+            new_cost = cost_so_far[str(current)] + 1
 
             if key not in cost_so_far or new_cost < cost_so_far[key]:
                 cost_so_far[key] = new_cost
                 priority = total_heuristic(new_position,colour)
-                item = (priority,new_position)
-                frontier.put(item)
-                came_from[key] = (current[1], state[1])
+                frontier.put(new_position,priority)
+                came_from[key] = (current, state[1])
 
     return came_from
 
@@ -215,43 +214,9 @@ def A_Star(positions,blocks, colour):
 def main():
     """with open(sys.argv[1]) as file:
         data = json.load(file)"""
-    """
-        pieces = data[pieces]
-        blocks = data[blocks]
-        colour = data[colour]
-    """
-    pieces = [[0,0],[0,-1],[-2,1]]
-    blocks = [[-1,-0],[-1,1],[1,1],[3,-1]]
-    colour = "red"
-    solution = A_Star(pieces, blocks, colour)
-    goal = ["REMOVED"]*len(pieces)
-    output = []
-    board_dict = {}
-    for piece in pieces:
-        board_dict[tuple(piece)] = 'r'
-    for piece in blocks:
-        board_dict[tuple(piece)] = 'B'
-    print_board(board_dict)
+    solution = A_Star([[0,0],[3,-3],[-2,1]],[[-1,-2],[-1,1],[1,1],[3,-1]],"red")
 
-    while goal or previous_state:
-        previous_state = solution[str(goal)]
-        if previous_state != None:
-            #print(goal, previous_state[0])
-            output.append((goal, previous_state[1].previous_position,
-            previous_state[1].new_position, previous_state[1].action))
-            goal = previous_state[0]
-        else:
-            break
 
-    for operation in reversed(output):
-        del board_dict[tuple(operation[1])]
-        if operation[3] != "EXIT":
-            board_dict[tuple(operation[2])] = 'r'
-        print_board(board_dict)
-        if operation[3] == "EXIT":
-            print("%s from %s."%(operation[3], str(operation[1])))
-        else:
-            print("%s from %s to %s."%(operation[3], str(operation[1]), str(operation[2])))
 
     # TODO: Search for and output winning sequence of moves
     # ...
