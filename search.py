@@ -142,6 +142,7 @@ def heuristic_distance(current_position, colour):
         abs(current_position[1]-position[1]))
         dist_list.append(dist)
 
+
     return min(dist_list)
 
 """function to return all the posssible states and the corresponding operation obejcts"""
@@ -214,12 +215,43 @@ def A_Star(positions,blocks, colour):
 def main():
     """with open(sys.argv[1]) as file:
         data = json.load(file)"""
-    solution = A_Star([[0,0],[3,-3],[-2,1]],[[-1,-2],[-1,1],[1,1],[3,-1]],"red")
-    goal = ["REMOVED"]*3
+    """
+        pieces = data[pieces]
+        blocks = data[blocks]
+        colour = data[colour]
+    """
+    pieces = [[0,0],[0,-1],[-2,1]]
+    blocks = [[-1,-0],[-1,1],[1,1],[3,-1]]
+    colour = "red"
+    solution = A_Star(pieces, blocks, colour)
+    goal = ["REMOVED"]*len(pieces)
+    output = []
+    board_dict = {}
+    for piece in pieces:
+        board_dict[tuple(piece)] = 'r'
+    for piece in blocks:
+        board_dict[tuple(piece)] = 'B'
+    print_board(board_dict)
+
     while goal or previous_state:
         previous_state = solution[str(goal)]
-        print(goal, previous_state[0])
-        goal = previous_state[0]
+        if previous_state != None:
+            #print(goal, previous_state[0])
+            output.append((goal, previous_state[1].previous_position,
+            previous_state[1].new_position, previous_state[1].action))
+            goal = previous_state[0]
+        else:
+            break
+
+    for operation in reversed(output):
+        del board_dict[tuple(operation[1])]
+        if operation[3] != "EXIT":
+            board_dict[tuple(operation[2])] = 'r'
+        print_board(board_dict)
+        if operation[3] == "EXIT":
+            print("%s from %s."%(operation[3], str(operation[1])))
+        else:
+            print("%s from %s to %s."%(operation[3], str(operation[1]), str(operation[2])))
 
     # TODO: Search for and output winning sequence of moves
     # ...
