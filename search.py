@@ -203,7 +203,8 @@ def A_Star(positions,blocks, colour):
             board_dict[tuple(piece)] = 'r'
             for piece in blocks:
                 board_dict[tuple(piece)] = 'b'
-        print_board(board_dict)        
+        #print_board(board_dict)
+        #print(current[1])
 
         #Goal check is going to return if all the pieces have exited the board
         is_goal = True
@@ -240,9 +241,9 @@ def main():
     pieces = List_to_Tuple(data.get('pieces'))
     blocks = List_to_Tuple(data.get('blocks'))
     colour = data.get('colour')
-
+    print(pieces)
     solution = A_Star(pieces,blocks,colour)
-    goal = [removed]*3
+    goal = [removed]*len(pieces)
     goal = tuple(goal)
 
     board_dict = {}
@@ -252,7 +253,7 @@ def main():
         board_dict[tuple(piece)] = 'r'
     for piece in blocks:
         board_dict[tuple(piece)] = 'b'
-    print_board(board_dict)
+    #print_board(board_dict)
 
     while goal or previous_state:
 
