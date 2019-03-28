@@ -140,7 +140,7 @@ def heuristic_distance(current_position, colour):
     dist_list = []
     for position in exit_positions:
         dist = max(abs(current_position[0]-position[0]),
-        abs(current_position[0]+current_position[0]-position[0]-position[1]),
+        #abs(current_position[0]+current_position[0]-position[0]-position[1]),
         abs(current_position[1]-position[1]))
         dist_list.append(dist)
 
@@ -176,8 +176,9 @@ def total_heuristic(pieces, colour):
 
 
 def goal_check(pieces):
+    print(pieces)
     for piece in pieces:
-        if piece != "REMOVED":
+        if piece != removed:
             return False
     return True
 
@@ -199,7 +200,11 @@ def A_Star(positions,blocks, colour):
         current = frontier.get()
 
         #Goal check is going to return if all the pieces have exited the board
-        if goal_check(current[1]):
+        is_goal = True
+        for piece in current[1]:
+            if piece != removed:
+                is_goal = False
+        if is_goal:
             break
 
         for state in next_states(current[1], blocks, colour):
@@ -242,7 +247,6 @@ def main():
     while goal or previous_state:
         previous_state = solution[goal]
         if previous_state != None:
-            #print(goal, previous_state[0])
             output.append((goal, previous_state[1].previous_position,
             previous_state[1].new_position, previous_state[1].action))
             goal = previous_state[0]
