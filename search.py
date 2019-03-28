@@ -216,16 +216,19 @@ def A_Star(positions,blocks, colour):
 
     return came_from
 
-
-
-
+#Converts a list of lists into a tuple of tuples
+def List_to_Tuple(list):
+    return tuple(tuple(i) for i in list)
 
 def main():
-    """with open(sys.argv[1]) as file:
-        data = json.load(file)"""
-    pieces = ((0,0),(0,-1),(-2,1))
-    blocks = ((-1,0),(-1,1),(1,1),(3,-1))
-    colour = "red"
+
+    with open(sys.argv[1]) as file:
+        data = json.load(file)
+
+    pieces = List_to_Tuple(data.get('pieces'))
+    blocks = List_to_Tuple(data.get('blocks'))
+    colour = data.get('colour')
+
     solution = A_Star(pieces,blocks,colour)
     goal = [removed]*3
     goal = tuple(goal)
@@ -240,6 +243,7 @@ def main():
     print_board(board_dict)
 
     while goal or previous_state:
+
         previous_state = solution[goal]
         if previous_state != None:
             #print(goal, previous_state[0])
@@ -253,7 +257,7 @@ def main():
         del board_dict[tuple(operation[1])]
         if operation[3] != "EXIT":
             board_dict[tuple(operation[2])] = 'r'
-        print_board(board_dict)
+        #print_board(board_dict)
         if operation[3] == "EXIT":
             print("%s from %s."%(operation[3], str(operation[1])))
         else:
@@ -351,3 +355,4 @@ def print_board(board_dict, message="", debug=False, **kwargs):
 # when this module is executed, run the `main` function:
 if __name__ == '__main__':
     main()
+
