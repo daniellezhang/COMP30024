@@ -198,6 +198,12 @@ def A_Star(positions,blocks, colour):
     while not frontier.empty():
 
         current = frontier.get()
+        board_dict = {}
+        for piece in current[1]:
+            board_dict[tuple(piece)] = 'r'
+            for piece in blocks:
+                board_dict[tuple(piece)] = 'b'
+        print_board(board_dict)        
 
         #Goal check is going to return if all the pieces have exited the board
         is_goal = True
@@ -207,12 +213,6 @@ def A_Star(positions,blocks, colour):
         if is_goal:
             break
 
-        board_dict = {}
-        for piece in current[1]:
-            board_dict[tuple(piece)] = 'r'
-            for piece in blocks:
-                board_dict[tuple(piece)] = 'b'
-        print_board(board_dict)
 
         for state in next_states(current[1], blocks, colour):
             new_position = state[0]
@@ -366,4 +366,3 @@ def print_board(board_dict, message="", debug=False, **kwargs):
 # when this module is executed, run the `main` function:
 if __name__ == '__main__':
     main()
-
