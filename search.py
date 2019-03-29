@@ -140,11 +140,14 @@ def heuristic_distance(current_position, colour):
     dist_list = []
     for position in exit_positions:
         dist = max(abs(current_position[0]-position[0]),
-        #abs(current_position[0]+current_position[0]-position[0]-position[1]),
+        abs(current_position[0]+current_position[0]-position[0]-position[1]),
         abs(current_position[1]-position[1]))
         dist_list.append(dist)
 
-    return min(dist_list)
+    estimate = min(dist_list)
+    if estimate == 0:
+        return 0
+    return estimate+1
 
 """function to return all the posssible states and the corresponding operation obejcts"""
 def next_states(pieces, blocks, colour):
@@ -184,6 +187,7 @@ def goal_check(pieces):
 
 #Positions would be the starting positions of all the players.
 def A_Star(positions,blocks, colour):
+    count = 0
 
     frontier = PriorityQueue()
     item = (0,positions)
@@ -196,6 +200,7 @@ def A_Star(positions,blocks, colour):
     cost_so_far[positions] = 0
 
     while not frontier.empty():
+        count += 1
 
         current = frontier.get()
         board_dict = {}
@@ -211,6 +216,7 @@ def A_Star(positions,blocks, colour):
         for piece in current[1]:
             if piece != removed:
                 is_goal = False
+                break
         if is_goal:
             break
 
@@ -222,11 +228,11 @@ def A_Star(positions,blocks, colour):
 
             if new_position not in cost_so_far or new_cost < cost_so_far[new_position]:
                 cost_so_far[new_position] = new_cost
-                priority = total_heuristic(new_position,colour)
+                priority = new_cost+ total_heuristic(new_position,colour)
                 item = (priority,new_position)
                 frontier.put(item)
                 came_from[new_position] = (current[1], state[1])
-
+    print("#",count)
     return came_from
 
 #Converts a list of lists into a tuple of tuples
@@ -241,19 +247,18 @@ def main():
     pieces = List_to_Tuple(data.get('pieces'))
     blocks = List_to_Tuple(data.get('blocks'))
     colour = data.get('colour')
-    print(pieces)
-    solution = A_Star(pieces,blocks,colour)
-    goal = [removed]*len(pieces)
-    goal = tuple(goal)
-
-    board_dict = {}
     output = []
-
+    board_dict = {}
     for piece in pieces:
         board_dict[tuple(piece)] = 'r'
     for piece in blocks:
         board_dict[tuple(piece)] = 'b'
-    #print_board(board_dict)
+    print_board(board_dict)
+    solution = A_Star(pieces,blocks,colour)
+    goal = [removed]*len(pieces)
+    goal = tuple(goal)
+
+
 
     while goal or previous_state:
 
@@ -269,7 +274,7 @@ def main():
         del board_dict[tuple(operation[1])]
         if operation[3] != "EXIT":
             board_dict[tuple(operation[2])] = 'r'
-        #print_board(board_dict)
+        print_board(board_dict)
         if operation[3] == "EXIT":
             print("%s from %s."%(operation[3], str(operation[1])))
         else:
