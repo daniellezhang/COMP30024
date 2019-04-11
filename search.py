@@ -8,15 +8,20 @@ Authors: Danielle Zhang & Ishan Sodhi
 import sys
 import json
 from queue import PriorityQueue
+from queue import Queue
 
 
 """dictionary of every colour's exiting coordinates"""
-exit_dict = {"red":((3,-3),(3,-2),(3,-1),(3,0)),
-"green":((-3,3),(-2,3),(-1,3),(-0,3)),
-"blue":((-3,0),(-2,-1),(-1,-2),(0,-3))}
+exit_dict = {"red":[(3,-3),(3,-2),(3,-1),(3,0)],
+"green":[(-3,3),(-2,3),(-1,3),(-0,3)],
+"blue":[(-3,0),(-2,-1),(-1,-2),(0,-3)]}
 
 """coordinate marker for pieces that have been removed from the board"""
 removed = (-5,-5)
+
+path_dict = {}
+intersect_list = []
+intersect_dict = {}
 
 class Operation(object):
     def __init__(self, pos1, pos2, action):
@@ -133,7 +138,7 @@ def possible_action(piece_index, pieces, blocks, colour):
 
     return actions
 
-def heuristic_distance(current_position, colour):
+def distance_to_exit(current_position, colour):
     """function to calculate the minimum hexagonal distance between given position
     and exit positions"""
     exit_positions = exit_dict[colour]
@@ -145,9 +150,14 @@ def heuristic_distance(current_position, colour):
         dist_list.append(dist)
 
     estimate = min(dist_list)
-    if estimate == 0:
-        return 0
-    return estimate+1
+    return estimate
+
+def distance(pos1, pos2):
+    """function to calculate the minimum hexagonal distance between 2 given positions"""
+    dist = max(abs(pos1[0]-pos2[0]),
+    abs(pos1[0]+pos1[1]-pos2[0]-pos2[1]),
+    abs(pos1[1]-pos2[1]))
+    return dist
 
 """function to return all the posssible states and the corresponding operation obejcts"""
 def next_states(pieces, blocks, colour):
@@ -169,21 +179,88 @@ def next_states(pieces, blocks, colour):
     return output
 
 
-def total_heuristic(pieces, colour):
+def total_heuristic(pieces, blocks, colour):
     """function that sum the heuristic distance of every piece"""
     sum = 0
     for piece in pieces:
         if piece != removed:
-            sum += heuristic_distance(piece,colour)
-    return sum
+
+            #sum += distance_to_exit(piece,colour)
+            sum += path_dict[piece]
+            """temp = piece
+            for i in intersect_list:
+                if path_dict[temp] >= i:
+                    sum += (path_dict[temp]-i)*3/4
+                    temp = intersect_dict[i]
+            sum +=  distance_to_exit(temp, colour)"""
+    return sum*3/4
 
 
 def goal_check(pieces):
-    print(pieces)
     for piece in pieces:
         if piece != removed:
             return False
     return True
+
+def shortest_path(blocks, pieces, colour):
+    frontier = Queue()
+
+    for coordinate in exit_dict[colour]:
+        if(coordinate not in blocks) and coordinate not in pieces:
+            path_dict[coordinate] = 1
+            next_coordinates = neighbours(coordinate)
+            for next in next_coordinates:
+                frontier.put((next,coordinate))
+
+    while not frontier.empty():
+        current = frontier.get()
+        #print_board(path_dict)
+        new_path = path_dict[current[1]] + 1
+        """and current[0] not in pieces"""
+        if current[0] not in blocks :
+            if path_dict.get(current[0],-1) == -1:
+                path_dict[current[0]] = new_path
+            elif new_path < path_dict[current[0]]:
+                path_dict[current[0]] = new_path
+            next_coordinates = neighbours(current[0])
+            for next in next_coordinates:
+                if path_dict.get(next, -1) == -1:
+                    frontier.put((next,current[0]))
+                elif path_dict[next] > new_path + 1:
+                    path_dict[next] = new_path + 1
+        else:
+            next_coordinates = neighbours(current[0])
+            q_difference = current[0][0] - current[1][0]
+            r_difference = current[0][1] - current[1][1]
+            for next in next_coordinates:
+                if next[0] == current[0][0]+q_difference and next[1] == current[0][1]+r_difference:
+                    if path_dict.get(next,-1) == -1:
+                        frontier.put((next, current[1]))
+                    elif path_dict[next] > new_path:
+                        path_dict[next] = new_path
+
+    max = 0
+    for key in path_dict:
+        if intersect_dict.get(path_dict[key],-1) == -1:
+            intersect_dict[path_dict[key]] = [key]
+        else:
+            intersect_dict[path_dict[key]].append(key)
+            if path_dict[key] > max:
+                max = path_dict[key]
+
+    for i in range(max+1):
+
+        if intersect_dict.get(i,-1) != -1:
+            if len(intersect_dict[i]) > 1:
+                del intersect_dict[i]
+            else:
+                intersect_list.append(i)
+                intersect_dict[i] = intersect_dict[i][0]
+
+    intersect_list.sort(reverse = True)
+
+    return
+
 
 #Positions would be the starting positions of all the players.
 def A_Star(positions,blocks, colour):
@@ -195,21 +272,14 @@ def A_Star(positions,blocks, colour):
     frontier.put(item)
     came_from = {}
 
+
     cost_so_far = {}
     came_from[positions] = None
     cost_so_far[positions] = 0
 
     while not frontier.empty():
         count += 1
-
         current = frontier.get()
-        board_dict = {}
-        for piece in current[1]:
-            board_dict[tuple(piece)] = 'r'
-            for piece in blocks:
-                board_dict[tuple(piece)] = 'b'
-        #print_board(board_dict)
-        #print(current[1])
 
         #Goal check is going to return if all the pieces have exited the board
         is_goal = True
@@ -220,19 +290,18 @@ def A_Star(positions,blocks, colour):
         if is_goal:
             break
 
-
         for state in next_states(current[1], blocks, colour):
             new_position = state[0]
 
             new_cost = cost_so_far[current[1]] + 1
 
-            if new_position not in cost_so_far or new_cost < cost_so_far[new_position]:
+            if cost_so_far.get(new_position,-1)==-1 or new_cost < cost_so_far[new_position]:
                 cost_so_far[new_position] = new_cost
-                priority = new_cost+ total_heuristic(new_position,colour)
+                priority = new_cost+ total_heuristic(new_position,blocks,colour)
                 item = (priority,new_position)
                 frontier.put(item)
                 came_from[new_position] = (current[1], state[1])
-    print("#",count)
+    #print("#",count)
     return came_from
 
 #Converts a list of lists into a tuple of tuples
@@ -244,19 +313,29 @@ def main():
     with open(sys.argv[1]) as file:
         data = json.load(file)
 
+    count = 0
     pieces = List_to_Tuple(data.get('pieces'))
     blocks = List_to_Tuple(data.get('blocks'))
     colour = data.get('colour')
     output = []
     board_dict = {}
+
     for piece in pieces:
         board_dict[tuple(piece)] = 'r'
     for piece in blocks:
         board_dict[tuple(piece)] = 'b'
+    for block in blocks:
+        if block in exit_dict[colour]:
+            exit_dict[colour].remove(block)
+
+    shortest_path(blocks,pieces, colour)
     print_board(board_dict)
+    print_board(path_dict)
+    print("#",total_heuristic(pieces, blocks, colour))
     solution = A_Star(pieces,blocks,colour)
     goal = [removed]*len(pieces)
     goal = tuple(goal)
+
 
 
 
@@ -272,19 +351,18 @@ def main():
 
     for operation in reversed(output):
         del board_dict[tuple(operation[1])]
+        count+=1
         if operation[3] != "EXIT":
             board_dict[tuple(operation[2])] = 'r'
-        print_board(board_dict)
+        #print_board(board_dict)
         if operation[3] == "EXIT":
             print("%s from %s."%(operation[3], str(operation[1])))
         else:
             print("%s from %s to %s."%(operation[3], str(operation[1]), str(operation[2])))
 
+    print("#",count)
 
 
-
-    # TODO: Search for and output winning sequence of moves
-    # ...
 
 
 def print_board(board_dict, message="", debug=False, **kwargs):
