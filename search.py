@@ -11,18 +11,17 @@ from queue import PriorityQueue
 from queue import Queue
 
 
-"""dictionary of every colour's exiting coordinates"""
+#dictionary of every colour's exiting positions
 exit_dict = {"red":[(3,-3),(3,-2),(3,-1),(3,0)],
 "green":[(-3,3),(-2,3),(-1,3),(-0,3)],
 "blue":[(-3,0),(-2,-1),(-1,-2),(0,-3)]}
 
-"""coordinate marker for pieces that have been removed from the board"""
+#position marker for pieces that have been removed from the board
 removed = (-5,-5)
 
 path_dict = {}
-intersect_list = []
-intersect_dict = {}
 
+#a class to hold information about the change in state after an action
 class Operation(object):
     def __init__(self, pos1, pos2, action):
         self.previous_position = pos1
@@ -138,26 +137,6 @@ def possible_action(piece_index, pieces, blocks, colour):
 
     return actions
 
-def distance_to_exit(current_position, colour):
-    """function to calculate the minimum hexagonal distance between given position
-    and exit positions"""
-    exit_positions = exit_dict[colour]
-    dist_list = []
-    for position in exit_positions:
-        dist = max(abs(current_position[0]-position[0]),
-        abs(current_position[0]+current_position[0]-position[0]-position[1]),
-        abs(current_position[1]-position[1]))
-        dist_list.append(dist)
-
-    estimate = min(dist_list)
-    return estimate
-
-def distance(pos1, pos2):
-    """function to calculate the minimum hexagonal distance between 2 given positions"""
-    dist = max(abs(pos1[0]-pos2[0]),
-    abs(pos1[0]+pos1[1]-pos2[0]-pos2[1]),
-    abs(pos1[1]-pos2[1]))
-    return dist
 
 """function to return all the posssible states and the corresponding operation obejcts"""
 def next_states(pieces, blocks, colour):
@@ -178,35 +157,33 @@ def next_states(pieces, blocks, colour):
 
     return output
 
-
+#FUnction that calculate the heuristic for the state
 def total_heuristic(pieces, blocks, colour):
-    """function that sum the heuristic distance of every piece"""
     sum = 0
+    #sum the shortest path length for every piece on the board
     for piece in pieces:
         if piece != removed:
-
-            #sum += distance_to_exit(piece,colour)
             sum += path_dict[piece]
-            """temp = piece
-            for i in intersect_list:
-                if path_dict[temp] >= i:
-                    sum += (path_dict[temp]-i)*3/4
-                    temp = intersect_dict[i]
-            sum +=  distance_to_exit(temp, colour)"""
+
     return sum*3/4
 
-
+#Function to check if a piece has been removed
 def goal_check(pieces):
     for piece in pieces:
         if piece != removed:
             return False
     return True
 
+#function to find the shortest path to the exits for every position on the board
 def shortest_path(blocks, pieces, colour):
+    #every node in the queue is consisted of the current position and the
+    #previous position
     frontier = Queue()
 
+    #start the algorithm from the exit positions' neighbours
     for coordinate in exit_dict[colour]:
-        if(coordinate not in blocks) and coordinate not in pieces:
+        #only consider the exit positions that aren't blocked
+        if(coordinate not in blocks):
             path_dict[coordinate] = 1
             next_coordinates = neighbours(coordinate)
             for next in next_coordinates:
@@ -214,65 +191,64 @@ def shortest_path(blocks, pieces, colour):
 
     while not frontier.empty():
         current = frontier.get()
-        #print_board(path_dict)
         new_path = path_dict[current[1]] + 1
-        """and current[0] not in pieces"""
+        #the current position doesn't have a block on it
         if current[0] not in blocks :
+            #current position hasn't been visited yet. Assign path length
             if path_dict.get(current[0],-1) == -1:
                 path_dict[current[0]] = new_path
+
+            #current position has been visited. New path length is shorter.
+            #Assign path length
             elif new_path < path_dict[current[0]]:
                 path_dict[current[0]] = new_path
             next_coordinates = neighbours(current[0])
+
             for next in next_coordinates:
+                #add current position's neighbour that has not yet been
+                #visited to the queue
                 if path_dict.get(next, -1) == -1:
                     frontier.put((next,current[0]))
+                #Assign path length to the current position's neighbour
+                #if the new path length is shorter
                 elif path_dict[next] > new_path + 1:
+
                     path_dict[next] = new_path + 1
+
+        #the current position has a block on it
         else:
             next_coordinates = neighbours(current[0])
             q_difference = current[0][0] - current[1][0]
             r_difference = current[0][1] - current[1][1]
+            #perform a jump action from previous position, using the block
+            #on the current position
             for next in next_coordinates:
-                if next[0] == current[0][0]+q_difference and next[1] == current[0][1]+r_difference:
+                #new position reached by jump action has not been visited.
+                #Assign path length
+                if next[0] == current[0][0]+q_difference and\
+                next[1] == current[0][1]+r_difference:
                     if path_dict.get(next,-1) == -1:
                         frontier.put((next, current[1]))
+                    #Assign path length to the new position reached by jump
+                    #action if the new path length is shorter
                     elif path_dict[next] > new_path:
                         path_dict[next] = new_path
 
-    max = 0
-    for key in path_dict:
-        if intersect_dict.get(path_dict[key],-1) == -1:
-            intersect_dict[path_dict[key]] = [key]
-        else:
-            intersect_dict[path_dict[key]].append(key)
-            if path_dict[key] > max:
-                max = path_dict[key]
-
-    for i in range(max+1):
-
-        if intersect_dict.get(i,-1) != -1:
-            if len(intersect_dict[i]) > 1:
-                del intersect_dict[i]
-            else:
-                intersect_list.append(i)
-                intersect_dict[i] = intersect_dict[i][0]
-
-    intersect_list.sort(reverse = True)
-
     return
 
-
+#Function which implements the A* Algorithm for pathfinding.
 #Positions would be the starting positions of all the players.
+#return a dictionary that store the Operation object that get to each state
 def A_Star(positions,blocks, colour):
     count = 0
 
+    #Priority queue to choose state with lowest cost
     frontier = PriorityQueue()
     item = (0,positions)
-    #frontier.put(positions,0)
     frontier.put(item)
     came_from = {}
 
-
+    #To store cost upto the position and path the player came from
     cost_so_far = {}
     came_from[positions] = None
     cost_so_far[positions] = 0
@@ -295,13 +271,13 @@ def A_Star(positions,blocks, colour):
 
             new_cost = cost_so_far[current[1]] + 1
 
+            #To calculate the path cost
             if cost_so_far.get(new_position,-1)==-1 or new_cost < cost_so_far[new_position]:
                 cost_so_far[new_position] = new_cost
                 priority = new_cost+ total_heuristic(new_position,blocks,colour)
                 item = (priority,new_position)
                 frontier.put(item)
                 came_from[new_position] = (current[1], state[1])
-    #print("#",count)
     return came_from
 
 #Converts a list of lists into a tuple of tuples
@@ -310,9 +286,9 @@ def List_to_Tuple(list):
 
 def main():
 
+    #Storing data from JSON file and initializing board
     with open(sys.argv[1]) as file:
         data = json.load(file)
-
     count = 0
     pieces = List_to_Tuple(data.get('pieces'))
     blocks = List_to_Tuple(data.get('blocks'))
@@ -320,28 +296,31 @@ def main():
     output = []
     board_dict = {}
 
+    #adding pieces and blocks into board_dict for visualisation of the board
     for piece in pieces:
-        board_dict[tuple(piece)] = 'r'
+        board_dict[tuple(piece)] = 'p'
     for piece in blocks:
         board_dict[tuple(piece)] = 'b'
+
+    #remove exit position from exit_dict if the position is occupied
+    #by a block
     for block in blocks:
         if block in exit_dict[colour]:
             exit_dict[colour].remove(block)
 
+    #Compute shortest path and print board
     shortest_path(blocks,pieces, colour)
     print_board(board_dict)
     print_board(path_dict)
-    print("#",total_heuristic(pieces, blocks, colour))
-    solution = A_Star(pieces,blocks,colour)
+    #search for solution
+    solution_dict = A_Star(pieces,blocks,colour)
+    #initialise goal state
     goal = [removed]*len(pieces)
     goal = tuple(goal)
 
-
-
-
+    #backtracking from goal to find the shortest solution
     while goal or previous_state:
-
-        previous_state = solution[goal]
+        previous_state = solution_dict[goal]
         if previous_state != None:
             output.append((goal, previous_state[1].previous_position,
             previous_state[1].new_position, previous_state[1].action))
@@ -349,12 +328,12 @@ def main():
         else:
             break
 
+    #print out solution
     for operation in reversed(output):
         del board_dict[tuple(operation[1])]
         count+=1
         if operation[3] != "EXIT":
             board_dict[tuple(operation[2])] = 'r'
-        #print_board(board_dict)
         if operation[3] == "EXIT":
             print("%s from %s."%(operation[3], str(operation[1])))
         else:
