@@ -1,3 +1,60 @@
+exit_dict = {"r":[(3,-3),(3,-2),(3,-1),(3,0)],
+"g":[(-3,3),(-2,3),(-1,3),(-0,3)],
+"b":[(-3,0),(-2,-1),(-1,-2),(0,-3)]}
+
+weights = (1,1,1)
+
+class State:
+    def __init__(self, colour, board, exited_piece_count, action, previous_evaluation_feature):
+        self.colour = colour
+        self.board = board
+        self.action = action
+        self.n_pieces_on_board = len(board[colour])
+        self.n_pieces_left = 4-exited_piece_count[colour]
+        if(self.n_pieces_left <= self.n_pieces_on_board):
+            self.n_peices_missing = 0
+        else:
+            self.n_pieces_missing = self.n_pieces_left - self.n_pieces_on_board
+        self.sum_exit_distance = sum_squared_exit_distance(board, colour, n_pieces_left)
+        self.evaluation_feature = (n_peices_missing, n_pieces_left, sum_exit_distance)
+        self.previous_evaluation_feature = previous_evaluation_feature
+        sef.evaluation = evaluate(evaluation_feature, previous_evaluation_feature)
+
+
+
+def hex_distance(coordinate1, coordinate2):
+    return (abs(coordinate1[0]-coordinate2[0])
+    + abs(coordinate1[0]+coordinate1[1]-coordinate2[0]-coordinate2[1])
+    +abs(coordinate1[1]-coordinate2[1]))/2
+
+def sum_squared_exit_distance(board, colour,n_pieces_left):
+    min_dist_list = []
+    for piece in board[colour]:
+        min_dist_list.append(squared_min_distance_to_exit(piece, colour))
+    min_dist_list.sort()
+    sum = 0
+    for i in range(0,n_pieces_left):
+        sum += min_dist_list[i]
+
+    return sum
+
+def squared_exit_distance(piece, colour):
+    min_dist = 36
+    for exit in exit_dict[colour]:
+        distance = hex_distance(piece, exit)
+        if(distance < min_dist):
+            min_dist=distance
+
+return min_dist
+
+def evaluate(evaluation_feature, previous_evaluation_feature):
+    sum = 0
+    for i in range(0,3):
+        sum += weight[i]*(previous_evaluation_feature[i] - evaluation_feature[i])
+
+    return sum
+
+
 
 
 class ExamplePlayer:
@@ -14,10 +71,7 @@ class ExamplePlayer:
         """
         # TODO: Set up state representation.
         self.colour = colour
-
-        self.exit_dict = {"r":[(3,-3),(3,-2),(3,-1),(3,0)],
-        "g":[(-3,3),(-2,3),(-1,3),(-0,3)],
-        "b":[(-3,0),(-2,-1),(-1,-2),(0,-3)]}
+        self.exited_piece_count = {"r":0, "g":0, "b":0}
 
 
 
