@@ -15,11 +15,10 @@ class State:
             self.n_peices_missing = 0
         else:
             self.n_pieces_missing = self.n_pieces_left - self.n_pieces_on_board
-        self.sum_exit_distance = sum_squared_exit_distance(board, colour, n_pieces_left)
+        self.sum_exit_distance = sum_squared_distance_to_exit(board, colour, n_pieces_left)
         self.evaluation_feature = (n_peices_missing, n_pieces_left, sum_exit_distance)
         self.previous_evaluation_feature = previous_evaluation_feature
-        sef.evaluation = evaluate(evaluation_feature, previous_evaluation_feature)
-
+        self.evaluation = evaluate(evaluation_feature, previous_evaluation_feature)
 
 
 def hex_distance(coordinate1, coordinate2):
@@ -27,7 +26,7 @@ def hex_distance(coordinate1, coordinate2):
     + abs(coordinate1[0]+coordinate1[1]-coordinate2[0]-coordinate2[1])
     +abs(coordinate1[1]-coordinate2[1]))/2
 
-def sum_squared_exit_distance(board, colour,n_pieces_left):
+def sum_squared_distance_to_exit(board, colour,n_pieces_left):
     min_dist_list = []
     for piece in board[colour]:
         min_dist_list.append(squared_min_distance_to_exit(piece, colour))
