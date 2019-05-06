@@ -66,14 +66,14 @@ def ring_generator(position, ring_no = 1):
 #return a list of positions that are neighbours to the given position
 def neighbours(player):
 
-    possible_moves = []
+    neighbours = []
     forbidden_Coords = ring_generator((0, 0), 4)
     moves = ring_generator(player)
 
     for i in moves:
         if not (i in forbidden_Coords):
-            possible_moves.append(i)
-    return possible_moves
+            neighbours.append(i)
+    return neighbours
 
 
 #Function that return a list of possible operations
