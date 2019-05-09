@@ -27,11 +27,53 @@ blocks = {}             #No blocks atm, for ease.
 
 repCopy = board_dict    #Representational copy of the board to be passed.
 
+# update the board based on action
+def board_update(board_dict, action):
+    #pass action. no change to the state
+    if action[0] == "PASS":
+        return board_dict
+    #find the piece that took the action
+    new_board = copy.deepcopy(board_dict)
+    if action[0] == "MOVE" or action[0] == "JUMP":
+        moved_piece = action[1][0]
+    else:
+        moved_piece = action[1]
+    for colour in "rgb":
+        for i in range(len(board_dict[colour])):
+            if board_dict[colour][i] == moved_piece:
+                player = colour
+                current = i
+                break
 
+    #move action. update the position of moved piece
+    if action[0] == "MOVE":
+        new_board[player][current] = action[1][1]
+    #jump action
+    elif action[0] == "JUMP":
+        #update the position of the moved piece
+        new_board[player][current] = action[1][1]
+        row = (action[1][0][0]+action[1][1][0])/2
+        col =  (action[1][0][1]+action[1][1][1])/2
+        middle_piece = (row, col)
+        #check whether the piece that is jumped over need to be converted
+        for colour in "rgb":
+            for i in range(len(board_dict[colour])):
+                if middle_piece == board_dict[colour][i]:
+                    #convert the middle piece if it has a different colour
+                    if colour != player:
+                        new_board[player].append(middle_piece)
+                        new_board[colour].remove(middle_piece)
+                    break
+    #exit action. remove the piece from the board
+    elif action[0] == "EXIT":
+        new_board[player].remove(moved_piece)
+
+
+    return new_board
 
 #a class to represent the state of the board
 class State(object):
-    def __init__(self, colour, board, exited_piece_count, action, previous_evaluation_feature):
+    def __init__(self, colour, board, exited_piece_count, action, previous_evaluation_feature = None):
         self.colour = colour
         self.board = board
         self.action = action
@@ -69,50 +111,24 @@ def squared_exit_distance(piece, colour):
         distance = hex_distance(piece, exit)
         if(distance < min_dist):
             min_dist=distance
-
-return min_dist
+    return min_dist
 
 def evaluate(evaluation_feature, previous_evaluation_feature):
+    # no previous_evaluation_feature. this is the very first state. return 0
+    if previous_evaluation_feature == None:
+        return 0
     sum = 0
     for i in range(0,3):
         sum += weight[i]*(previous_evaluation_feature[i] - evaluation_feature[i])
 
     return sum
 
-# update the board based on action
-def board_update(board_dict, aciton):
-    #pass action. no change to the state
-    if action[0] == "PASS":
-        return board_dict
-    #find the piece that took the action
-    else:
-        new_board = copy.deepcopy(board_dict)
-        for colour in "rgb":
-            for i in range(len(board_dict[colour])):
-                if piece == action[1][0]:
-                    player = colour
-                    current = i
-        #move action. update the position of current piece
-        if action[0] == "MOVE":
-            new_board[player][i] = action[1][1]
-        #jump action. check whether the piece that is jumped over need to be converted
-        elif action[0] == "JUMP":
-            row = (action[1][0][0]+action[1][1][0])/2
-            col =  (action[1][0][1]+action[1][1][1])/2
-            middle_piece = (row, col)
-            for colour in "rgb":
-                for i in range(len(board_dict[colour])):
-                    if middle_piece == action[1][0]:
-                        #convert the middle piece if it has a different colour
-                        if colour != player:
-                            new_board[player].append(middle_piece)
-                            new_board[colour].remove(middle_piece)
-        #exit action. remove the piece from the board
-        else:
-            new_board[player].remove(action[1][0])
+#create a new State object based on the given action
+def state_update(previous, action):
+    colour = next_colour[previous.colour]
+    board = board_update(previous.board, action)
 
 
-        return new_board
 
 #a function to generate new board representation based on the action
 def generate_state(previous_state, action):
@@ -125,7 +141,7 @@ def generate_state(previous_state, action):
 
 # a class for the node in the maxN search tree
 class Node(object):
-    def __init__(self, i_depth, colour, d_boardDict, t_evalue = (0, 0, 0),state):
+    def __init__(self, i_depth, colour, d_boardDict,state,t_evalue = (0, 0, 0)):
 
         self.i_depth = i_depth                  #Depth of the tree
         self.colour = colour    #Colour of the player that is taking the action
@@ -235,26 +251,9 @@ class ExamplePlayer:
 
 
     def update(self, colour, action):
-        """
-        This method is called at the end of every turn (including your player’s
-        turns) to inform your player about the most recent action. You should
-        use this opportunity to maintain your internal representation of the
-        game state and any other information about the game you are storing.
-
-        The parameter colour will be a string representing the player whose turn
-        it is (Red, Green or Blue). The value will be one of the strings "red",
-        "green", or "blue" correspondingly.
-
-        The parameter action is a representation of the most recent action (or
-        pass) conforming to the above in- structions for representing actions.
-
-        You may assume that action will always correspond to an allowed action
-        (or pass) for the player colour (your method does not need to validate
-        the action/pass against the game rules).
-        """
         # TODO: Update state representation in response to action.
 
-
+        return
 
 
 
