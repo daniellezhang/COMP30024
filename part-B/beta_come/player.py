@@ -1,4 +1,5 @@
 import copy
+import sys
 
 exit_dict = {"r":[(3,-3),(3,-2),(3,-1),(3,0)],
 "g":[(-3,3),(-2,3),(-1,3),(-0,3)],
@@ -28,7 +29,7 @@ blocks = {}             #No blocks atm, for ease.
 repCopy = board_dict    #Representational copy of the board to be passed.
 
 # update the board based on action
-def board_update(board_dict, action):
+def board_update(player, board_dict, action):
     #pass action. no change to the state
     if action[0] == "PASS":
         return board_dict
@@ -38,12 +39,10 @@ def board_update(board_dict, action):
         moved_piece = action[1][0]
     else:
         moved_piece = action[1]
-    for colour in "rgb":
-        for i in range(len(board_dict[colour])):
-            if board_dict[colour][i] == moved_piece:
-                player = colour
-                current = i
-                break
+    for i in range(len(board_dict[player])):
+        if board_dict[player][i] == moved_piece:
+            current = i
+            break
 
     #move action. update the position of moved piece
     if action[0] == "MOVE":
@@ -71,22 +70,41 @@ def board_update(board_dict, action):
 
     return new_board
 
-#a class to represent the state of the board
+#a class to represent the state of the game from the perspective of the given player
 class State(object):
-    def __init__(self, colour, board, exited_piece_count, action, previous_evaluation_feature = None):
+    def __init__(self, colour, board, exited_piece_count, action, previous_state):
         self.colour = colour
         self.board = board
         self.action = action
-        self.n_pieces_on_board = len(board[colour])
-        self.n_pieces_left = 4-exited_piece_count[colour]
-        if(self.n_pieces_left <= self.n_pieces_on_board):
-            self.n_peices_missing = 0
+        self.exited_piece_count = exited_piece_count
+        self.evaluation_feature = features(colour, board, exited_piece_count)
+        if previous_state == None:
+            previous_evaluation_feature = None
         else:
-            self.n_pieces_missing = self.n_pieces_left - self.n_pieces_on_board
-        self.sum_exit_distance = sum_squared_distance_to_exit(board, colour, n_pieces_left)
-        self.evaluation_feature = (n_peices_missing, n_pieces_left, sum_exit_distance)
-        self.previous_evaluation_feature = previous_evaluation_feature
-        self.evaluation = evaluate(evaluation_feature, previous_evaluation_feature)
+            previous_evaluation_feature = features(colour, previous_state.board, previous_state.exited_piece_count)
+        self.evaluation = evaluate(self.evaluation_feature, previous_evaluation_feature)
+    def print_state(self):
+        print(self.colour)
+        print(self.action)
+        print(self.evaluation_feature)
+        print("evaluation:%d"%self.evaluation)
+        board_dict = {}
+        for colour in 'rgb':
+            for piece in self.board[colour]:
+                board_dict[piece] = colour
+        print_board(board_dict)
+
+#generate values for feature that are used for evaluation function
+#from the perspective of the given player
+def features(colour, board, exited_piece_count):
+        n_pieces_on_board = len(board[colour])
+        n_pieces_left = 4-exited_piece_count[colour]
+        if(n_pieces_left <= n_pieces_on_board):
+            n_pieces_missing = 0
+        else:
+            n_pieces_missing = n_pieces_left - n_pieces_on_board
+        sum_exit_distance = sum_squared_distance_to_exit(board, colour, n_pieces_left)
+        return (n_pieces_missing,n_pieces_left,sum_exit_distance)
 
 
 def hex_distance(coordinate1, coordinate2):
@@ -97,7 +115,7 @@ def hex_distance(coordinate1, coordinate2):
 def sum_squared_distance_to_exit(board, colour,n_pieces_left):
     min_dist_list = []
     for piece in board[colour]:
-        min_dist_list.append(squared_min_distance_to_exit(piece, colour))
+        min_dist_list.append(squared_exit_distance(piece, colour))
     min_dist_list.sort()
     sum = 0
     for i in range(0,n_pieces_left):
@@ -119,24 +137,24 @@ def evaluate(evaluation_feature, previous_evaluation_feature):
         return 0
     sum = 0
     for i in range(0,3):
-        sum += weight[i]*(previous_evaluation_feature[i] - evaluation_feature[i])
+        sum += weights[i]*(previous_evaluation_feature[i] - evaluation_feature[i])
 
     return sum
-
-#create a new State object based on the given action
-def state_update(previous, action):
-    colour = next_colour[previous.colour]
-    board = board_update(previous.board, action)
-
 
 
 #a function to generate new board representation based on the action
 def generate_state(previous_state, action):
+    colour = next_colour[previous_state.colour]
+    board = board_update(previous_state.colour,previous_state.board,action)
+    #exit action. update the exit pieces count
+    if(action[0] == "EXIT"):
+        exited_piece_count = copy.deepcopy(previous_state.exited_piece_count)
+        exited_piece_count[colour] += 1
+    else:
+        exited_piece_count = previous_state.exited_piece_count
 
+    return State(colour,board, exited_piece_count, action, previous_state)
 
-
-
-    return
 
 
 # a class for the node in the maxN search tree
@@ -215,48 +233,6 @@ def MaxN(node, i_depth, c_playerColour):
     return t_bestEvalue
 
 
-
-class ExamplePlayer:
-    def __init__(self, colour):
-        """
-        This method is called once at the beginning of the game to initialise
-        your player. You should use this opportunity to set up your own internal
-        representation of the game state, and any other information about the
-        game state you would like to maintain for the duration of the game.
-
-        The parameter colour will be a string representing the player your
-        program will play as (Red, Green or Blue). The value will be one of the
-        strings "red", "green", or "blue" correspondingly.
-        """
-        # TODO: Set up state representation.
-        self.colour = colour
-        self.exited_piece_count = {"r":0, "g":0, "b":0}
-
-
-
-
-    def action(self):
-        """
-        This method is called at the beginning of each of your turns to request
-        a choice of action from your program.
-
-        Based on the current state of the game, your player should select and
-        return an allowed action to play on this turn. If there are no allowed
-        actions, your player must return a pass instead. The action (or pass)
-        must be represented based on the above instructions for representing
-        actions.
-        """
-        # TODO: Decide what action to take.
-        return ("PASS", None)
-
-
-    def update(self, colour, action):
-        # TODO: Update state representation in response to action.
-
-        return
-
-
-
 def ring_generator(position, ring_no = 1):
 
     coordinates = []
@@ -305,13 +281,13 @@ def neighbours(player):
 
 
 #Function that return a list of possible operations
-def possible_action(piece_index, pieces, blocks, colour):
-    current_piece = pieces[piece_index]
+def possible_action(piece_index, board, player):
+    current_piece = board[player][piece_index]
     all_neighbours = neighbours(current_piece)
     is_occupied = [False]*len(all_neighbours)
     actions = []
     #check if there is any neighbour that is occupied by other pieces
-    for i in range(len(pieces)):
+    """for i in range(len(pieces)):
         if i != piece_index:
             for j in range(len(all_neighbours)):
                 if all_neighbours[j] == pieces[i]:
@@ -319,10 +295,16 @@ def possible_action(piece_index, pieces, blocks, colour):
     for block in blocks:
         for j in range(len(all_neighbours)):
             if all_neighbours[j] == block:
-                is_occupied[j] = True
+                is_occupied[j] = True"""
+    for colour in "rgb":
+        for i in range(len(board[colour])):
+            if i != piece_index or colour != player:
+                for j in range(len(all_neighbours)):
+                    if all_neighbours[j] == board[colour][i]:
+                        is_occupied = True
 
     #check if the current piece is able to exit the board
-    exit_list = exit_dict[colour]
+    exit_list = exit_dict[player]
     for pos in exit_list:
         if pos == current_piece:
             #actions.append(Operation(current_piece,removed,"EXIT"))
@@ -367,3 +349,135 @@ def possible_action(piece_index, pieces, blocks, colour):
             actions.append(("MOVE",(current_piece,neighbour)))
 
     return actions
+
+
+
+def print_board(board_dict, message="", debug=False):
+    """
+    Helper function to print a drawing of a hexagonal board's contents.
+
+    Arguments:
+
+    * `board_dict` -- dictionary with tuples for keys and anything printable
+    for values. The tuple keys are interpreted as hexagonal coordinates (using
+    the axial coordinate system outlined in the project specification) and the
+    values are formatted as strings and placed in the drawing at the corres-
+    ponding location (only the first 5 characters of each string are used, to
+    keep the drawings small). Coordinates with missing values are left blank.
+
+    Keyword arguments:
+
+    * `message` -- an optional message to include on the first line of the
+    drawing (above the board) -- default `""` (resulting in a blank message).
+    * `debug` -- for a larger board drawing that includes the coordinates
+    inside each hex, set this to `True` -- default `False`.
+    * Or, any other keyword arguments! They will be forwarded to `print()`.
+    """
+
+    # Set up the board template:
+    if not debug:
+        # Use the normal board template (smaller, not showing coordinates)
+        template = """# {0}
+#           .-'-._.-'-._.-'-._.-'-.
+#          |{16:}|{23:}|{29:}|{34:}|
+#        .-'-._.-'-._.-'-._.-'-._.-'-.
+#       |{10:}|{17:}|{24:}|{30:}|{35:}|
+#     .-'-._.-'-._.-'-._.-'-._.-'-._.-'-.
+#    |{05:}|{11:}|{18:}|{25:}|{31:}|{36:}|
+#  .-'-._.-'-._.-'-._.-'-._.-'-._.-'-._.-'-.
+# |{01:}|{06:}|{12:}|{19:}|{26:}|{32:}|{37:}|
+# '-._.-'-._.-'-._.-'-._.-'-._.-'-._.-'-._.-'
+#    |{02:}|{07:}|{13:}|{20:}|{27:}|{33:}|
+#    '-._.-'-._.-'-._.-'-._.-'-._.-'-._.-'
+#       |{03:}|{08:}|{14:}|{21:}|{28:}|
+#       '-._.-'-._.-'-._.-'-._.-'-._.-'
+#          |{04:}|{09:}|{15:}|{22:}|
+#          '-._.-'-._.-'-._.-'-._.-'"""
+    else:
+        # Use the debug board template (larger, showing coordinates)
+        template = """# {0}
+#              ,-' `-._,-' `-._,-' `-._,-' `-.
+#             | {16:} | {23:} | {29:} | {34:} |
+#             |  0,-3 |  1,-3 |  2,-3 |  3,-3 |
+#          ,-' `-._,-' `-._,-' `-._,-' `-._,-' `-.
+#         | {10:} | {17:} | {24:} | {30:} | {35:} |
+#         | -1,-2 |  0,-2 |  1,-2 |  2,-2 |  3,-2 |
+#      ,-' `-._,-' `-._,-' `-._,-' `-._,-' `-._,-' `-.
+#     | {05:} | {11:} | {18:} | {25:} | {31:} | {36:} |
+#     | -2,-1 | -1,-1 |  0,-1 |  1,-1 |  2,-1 |  3,-1 |
+#  ,-' `-._,-' `-._,-' `-._,-' `-._,-' `-._,-' `-._,-' `-.
+# | {01:} | {06:} | {12:} | {19:} | {26:} | {32:} | {37:} |
+# | -3, 0 | -2, 0 | -1, 0 |  0, 0 |  1, 0 |  2, 0 |  3, 0 |
+#  `-._,-' `-._,-' `-._,-' `-._,-' `-._,-' `-._,-' `-._,-'
+#     | {02:} | {07:} | {13:} | {20:} | {27:} | {33:} |
+#     | -3, 1 | -2, 1 | -1, 1 |  0, 1 |  1, 1 |  2, 1 |
+#      `-._,-' `-._,-' `-._,-' `-._,-' `-._,-' `-._,-'
+#         | {03:} | {08:} | {14:} | {21:} | {28:} |
+#         | -3, 2 | -2, 2 | -1, 2 |  0, 2 |  1, 2 | key:
+#          `-._,-' `-._,-' `-._,-' `-._,-' `-._,-' ,-' `-.
+#             | {04:} | {09:} | {15:} | {22:} |   | input |
+#             | -3, 3 | -2, 3 | -1, 3 |  0, 3 |   |  q, r |
+#              `-._,-' `-._,-' `-._,-' `-._,-'     `-._,-'"""
+
+    # prepare the provided board contents as strings, formatted to size.
+    ran = range(-3, +3+1)
+    cells = []
+    for qr in [(q,r) for q in ran for r in ran if -q-r in ran]:
+        if qr in board_dict:
+            cell = str(board_dict[qr]).center(5)
+        else:
+            cell = "     " # 5 spaces will fill a cell
+        cells.append(cell)
+
+    # fill in the template to create the board drawing, then print!
+    board = template.format(message, *cells)
+    print(board)
+
+
+
+class ExamplePlayer:
+    def __init__(self, colour):
+        """
+        This method is called once at the beginning of the game to initialise
+        your player. You should use this opportunity to set up your own internal
+        representation of the game state, and any other information about the
+        game state you would like to maintain for the duration of the game.
+
+        The parameter colour will be a string representing the player your
+        program will play as (Red, Green or Blue). The value will be one of the
+        strings "red", "green", or "blue" correspondingly.
+        """
+        # TODO: Set up state representation.
+        self.colour = colour
+        self.exited_piece_count = {"r":0, "g":0, "b":0}
+        self.board = {
+            'r': [(-3,0),(-3,1),(-3,2),(-3,3)],
+            'g': [(0,-3),(1,-3),(2,-3),(3,-3)],
+            'b': [(0,3),(1,2),(2,1),(3,0)]
+        }
+
+
+
+
+
+    def action(self):
+        """
+        This method is called at the beginning of each of your turns to request
+        a choice of action from your program.
+
+        Based on the current state of the game, your player should select and
+        return an allowed action to play on this turn. If there are no allowed
+        actions, your player must return a pass instead. The action (or pass)
+        must be represented based on the above instructions for representing
+        actions.
+        """
+        # TODO: Decide what action to take.
+        return ("PASS", None)
+
+
+    def update(self, colour, action):
+        # TODO: Update state representation in response to action.
+        self.board_dict = board_update(colour, self.board_dict, action)
+        if action[0] == "EXIT":
+            self.exited_piece_count[colour] += 1
+        return
