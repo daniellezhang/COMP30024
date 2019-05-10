@@ -285,23 +285,15 @@ def possible_action(piece_index, board, player):
     current_piece = board[player][piece_index]
     all_neighbours = neighbours(current_piece)
     is_occupied = [False]*len(all_neighbours)
+
     actions = []
     #check if there is any neighbour that is occupied by other pieces
-    """for i in range(len(pieces)):
-        if i != piece_index:
-            for j in range(len(all_neighbours)):
-                if all_neighbours[j] == pieces[i]:
-                    is_occupied[j] = True
-    for block in blocks:
-        for j in range(len(all_neighbours)):
-            if all_neighbours[j] == block:
-                is_occupied[j] = True"""
     for colour in "rgb":
         for i in range(len(board[colour])):
             if i != piece_index or colour != player:
                 for j in range(len(all_neighbours)):
                     if all_neighbours[j] == board[colour][i]:
-                        is_occupied = True
+                        is_occupied[j] = True
 
     #check if the current piece is able to exit the board
     exit_list = exit_dict[player]
@@ -309,7 +301,6 @@ def possible_action(piece_index, board, player):
         if pos == current_piece:
             #actions.append(Operation(current_piece,removed,"EXIT"))
             actions.append(("EXIT",current_piece))
-
 
     #go through the list of neighbours to find possible moves
     for i in range(len(all_neighbours)):
@@ -330,13 +321,18 @@ def possible_action(piece_index, board, player):
             if not out_of_board:
                 #check if there is other piece or block on this new_position
                 occupied = False
-                for i in range(len(pieces)):
+                """for i in range(len(pieces)):
                     if pieces[i] == jump_pos:
                         occupied = True
                         break
                 if not occupied:
                     for block in blocks:
                         if block == jump_pos:
+                            occupied = True
+                            break"""
+                for colour in "rgb":
+                    for j in range(len(board[colour])):
+                        if board[colour][j] == jump_pos:
                             occupied = True
                             break
                 #position is not occupied. Jump action is valid
