@@ -77,17 +77,19 @@ def board_update(player, board_dict, action):
 
 #a class to represent the state of the game from the perspective of the given player
 class State(object):
-    def __init__(self, colour, board, exited_piece_count, action, previous_state, weights):
+    def __init__(self, colour, board, exited_piece_count, action, previous_state):
         self.colour = colour
         self.board = board
         self.action = action
         self.exited_piece_count = exited_piece_count
-        self.evaluation_feature = features(colour, board, exited_piece_count)
+        #features used for evaluation, from the persepective of the previous player
+        #if this is the head of the search tree. assign it to None
         if previous_state == None:
-            previous_evaluation_feature = None
+            self.evaluation_feature = None
         else:
-            previous_evaluation_feature = features(colour, previous_state.board, previous_state.exited_piece_count)
-        self.evaluation = evaluate(self.evaluation_feature, previous_evaluation_feature, weights)
+            previous_evaluation_feature = features(previous_state.colour, previous_state.board, previous_state.exited_piece_count)
+            self.evaluation_feature = features(previous_state.colour, self.board, self.exited_piece_count)
+            self.evaluation = evaluate(self.evaluation_feature, previous_evaluation_feature)
     def print_state(self):
         print(self.colour)
         print(self.action)
@@ -148,7 +150,7 @@ def evaluate(evaluation_feature, previous_evaluation_feature, weights):
 
 
 #a function to generate new board representation based on the action
-def generate_state(previous_state, action, weights):
+def generate_state(previous_state, action):
     colour = next_colour[previous_state.colour]
     board = board_update(previous_state.colour,previous_state.board,action)
     #exit action. update the exit pieces count
@@ -158,7 +160,7 @@ def generate_state(previous_state, action, weights):
     else:
         exited_piece_count = previous_state.exited_piece_count
 
-    return State(colour,board, exited_piece_count, action, previous_state, weights)
+    return State(colour,board, exited_piece_count, action, previous_state)
 
 
 
