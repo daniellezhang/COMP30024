@@ -82,18 +82,10 @@ class State(object):
         self.board = board
         self.action = action
         self.exited_piece_count = exited_piece_count
-        self.evaluation_feature = features(colour, board, exited_piece_count)
-        if previous_state == None:
-            previous_evaluation_feature = None
-        else:
-            previous_evaluation_feature = features(colour, previous_state.board, previous_state.exited_piece_count)
-        self.evaluation = evaluate(self.evaluation_feature, previous_evaluation_feature)
-
+      
     def print_state(self):
         print(self.colour)
         print(self.action)
-        print(self.evaluation_feature)
-        print("evaluation:%d"%self.evaluation)
         board_dict = {}
         for colour in 'rgb':
             for piece in self.board[colour]:
@@ -102,15 +94,17 @@ class State(object):
 
 #generate values for feature that are used for evaluation function
 #from the perspective of the given player
-def features(colour, board, exited_piece_count):
-        n_pieces_on_board = len(board[colour])
-        n_pieces_left = 4-exited_piece_count[colour]
-        if(n_pieces_left <= n_pieces_on_board):
-            n_pieces_missing = 0
-        else:
-            n_pieces_missing = n_pieces_left - n_pieces_on_board
-        sum_exit_distance = sum_squared_distance_to_exit(board, colour, n_pieces_left)
-        return (n_pieces_missing,n_pieces_left,sum_exit_distance)
+def features(colour,state):
+    board = state.board
+    exited_piece_count = state.exited_piece_count
+    n_pieces_on_board = len(board[colour])
+    n_pieces_left = 4-exited_piece_count[colour]
+    if(n_pieces_left <= n_pieces_on_board):
+        n_pieces_missing = 0
+    else:
+        n_pieces_missing = n_pieces_left - n_pieces_on_board
+    sum_exit_distance = sum_squared_distance_to_exit(board, colour, n_pieces_left)
+    return (n_pieces_missing,n_pieces_left,sum_exit_distance)
 
 
 def hex_distance(coordinate1, coordinate2):
@@ -137,13 +131,16 @@ def squared_exit_distance(piece, colour):
             min_dist=distance
     return min_dist
 
-def evaluate(evaluation_feature, previous_evaluation_feature):
+#evaluate the state from the given player's perspective
+def evaluate(colour, current_state,previous_state):
+    previous_evaluation_feature = features(colour, previous_state)
+    current_evaluation_feature = features(colour, current_state)
     # no previous_evaluation_feature. this is the very first state. return 0
     if previous_evaluation_feature == None:
         return 0
     sum = 0
     for i in range(0,3):
-        sum += weights[i]*(previous_evaluation_feature[i] - evaluation_feature[i])
+        sum += weights[i]*(previous_evaluation_feature[i] - current_evaluation_feature[i])
 
     return sum
 
@@ -469,6 +466,10 @@ class ExamplePlayer:
             'g': [(0,-3),(1,-3),(2,-3),(3,-3)],
             'b': [(0,3),(1,2),(2,1),(3,0)]
         }
+        #load the weight
+
+        #f = open("/Users/zhangdanielle/code/COMP30024/part-B/beta_come/weight",'r')
+
 
     def action(self):
         """
