@@ -471,7 +471,7 @@ class ExamplePlayer:
         }
         #load the weight
 
-        f = open("/Users/zhangdanielle/code/COMP30024/part-B/beta_come/weight",'r')
+        #f = open("/Users/zhangdanielle/code/COMP30024/part-B/beta_come/weight",'r')
 
 
 
