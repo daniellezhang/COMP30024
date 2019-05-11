@@ -1,5 +1,6 @@
 import copy
 import sys
+from sys import maxsize
 
 exit_dict = {"r":[(3,-3),(3,-2),(3,-1),(3,0)],
 "g":[(-3,3),(-2,3),(-1,3),(-0,3)],
@@ -14,16 +15,20 @@ board_dict = {          #Representation of the board
     'b': [(0,3),(1,2),(2,1),(3,0)]
 }
 
+#May have to define this depending on how the sequence of players is decided by the referee program.
 next_colour = {         #To decide which player's turn is next
     'r':'g',
     'g':'b',
     'b':'r'
 }
 
-#'r' = 0
-#'g' = 1
-#'b' = 2
+player_index = {
 
+'r' : 0 ,
+'g' : 1 ,
+'b': 2
+
+}
 blocks = {}             #No blocks atm, for ease.
 
 repCopy = board_dict    #Representational copy of the board to be passed.
@@ -161,6 +166,8 @@ def generate_state(previous_state, action):
 class Node(object):
     def __init__(self, i_depth, colour, d_boardDict,state,t_evalue = (0, 0, 0)):
 
+        #Put blocks after clarifying the state of the program.
+
         self.i_depth = i_depth                  #Depth of the tree
         self.colour = colour    #Colour of the player that is taking the action
         self.d_boardDict = d_boardDict          #Representation of the board
@@ -185,6 +192,7 @@ class Node(object):
                 for j in possible_action(i, colourPieces, blocks, self.c_playerColour):
 
 
+                    #Change this for state instead of board, initial state?
                     #When we take the move, how that selected piece is gonna change.
                     changedBoard = self.d_boardDict
 
@@ -202,11 +210,9 @@ class Node(object):
     def RealEvaluation(self, boardState):
 
         #Put the code for the evaluation here
+        #We need an evaluation function which returns values for all the positions of the tuple.
+        #for the algorithm to work
         return 0
-
-
-
-
 
 #======================================================================================================================
 #ALGORITHM
@@ -214,23 +220,38 @@ def MaxN(node, i_depth, c_playerColour):
 
     #Check if the depth is 0 or we have reached the node that is a win or lose condition.
     if(i_depth == 0): #or ()'''Check if we have reached a win or lose condition ''':
+
+        #Works on the basis that the top constructor calls and gives a value to each node
+        #on it's creation
         return node.t_evalue
 
-    t_bestEvalue = (-maxsize,-maxsize,-maxsize)
+    #Initializing with -Max value
+    #Turn of our maximizingPLayer
+    #To stay true to the algorithm
+    if c_playerColour:
+        t_maxEvalue = (-maxsize,-maxsize,-maxsize)
 
-    ''''#For loop to iterate through every child.
-    for i in range(len(node.children)):
-        child = node.children[i]'''
+        #For loop through every child
+        for child in node.children:
 
-    #For loop through every child
-    for child in node.children:
-        t_evalue = MaxN(child, i_depth - 1, next_colour[c_playerColour])
+            #Evaluation of the child
+            t_evalue = MaxN(child, i_depth - 1, next_colour[c_playerColour])
 
-        #Change by indexing the colour of the player in the tuple bestEvalue
-        #Calculate the max between current evaluation and the maximum of the child
-        t_bestEvalue = max(t_bestEvalue,  )
+            #Calculate the max between current evaluation and the maximum of the child
+            #Essentially, do we have to calculate the max of the two, and send back the whole tuple,
+            #not just the single record.
 
-    return t_bestEvalue
+
+            #Check this line of code
+            if max(t_maxEvalue[player_index[c_playerColour]], t_evalue[player_index[c_playerColour]]) == t_evalue[player_index[c_playerColour]]:
+                t_maxEvalue = t_evalue
+
+    #Draw visualization.
+    return t_maxEvalue
+
+#At every move, a new tree has to be generated? Create the maincode or wincondition in such a way.
+#The tree generation should keep happening while the Win condition is not met by our or any
+#Other player.
 
 
 def ring_generator(position, ring_no = 1):
@@ -467,6 +488,35 @@ class ExamplePlayer:
         must be represented based on the above instructions for representing
         actions.
         """
+
+        '''Note - For our purposes, we may assume that update method updates the representation of the board that we have,
+        essentially, that we have an updated board before a call to action is passed.
+        board_dict
+
+        The action is defined to talk about only our program.
+        board_dict - Dict representing the dictionary
+        board_state - The state of the board.
+        Not passing t_evalue as default values are already present, what do the default values do?'''
+
+
+        tree_depth = 4  #Depth of the whole tree to be generated
+        c_curr_player = self.colour    #For representing it is our turn.
+        node = Node(tree_depth, c_curr_player, board_dict, board_state)        #Creating a 4-depth tree at every turn.
+
+        bestMove = -100
+        t_max_value = (-maxsize, -maxsize, -maxsize)
+        i_eval_depth = 3
+
+        #Determine the best move
+        for child in node.children:
+            t_val = MaxN(child, i_eval_depth, next_colour[c_curr_player])
+            if max(t_max_value[player_index[c_curr_player]], t_val[player_index[c_curr_player]]) == t_val[player_index[c_curr_player]]:
+                t_max_value = t_val
+                bestMove = child
+
+        #Return in the state we need it.
+
+        #Return the move that we are gonna take
         # TODO: Decide what action to take.
         return ("PASS", None)
 
@@ -477,3 +527,8 @@ class ExamplePlayer:
         if action[0] == "EXIT":
             self.exited_piece_count[colour] += 1
         return
+
+
+#Add evaluation function, figure out if it would take in the board_dict or state of the game,
+#Ensure the code for Node and evaluation function work in Lieu.
+#Change MaxN to return in the representation we want.
