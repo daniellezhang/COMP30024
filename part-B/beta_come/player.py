@@ -72,7 +72,7 @@ def board_update(player, board_dict, action):
 
 #a class to represent the state of the game from the perspective of the given player
 class State(object):
-    def __init__(self, colour, board, exited_piece_count, action, previous_state):
+    def __init__(self, colour, board, exited_piece_count, action, previous_state, weights):
         self.colour = colour
         self.board = board
         self.action = action
@@ -82,7 +82,7 @@ class State(object):
             previous_evaluation_feature = None
         else:
             previous_evaluation_feature = features(colour, previous_state.board, previous_state.exited_piece_count)
-        self.evaluation = evaluate(self.evaluation_feature, previous_evaluation_feature)
+        self.evaluation = evaluate(self.evaluation_feature, previous_evaluation_feature, weights)
     def print_state(self):
         print(self.colour)
         print(self.action)
@@ -131,7 +131,7 @@ def squared_exit_distance(piece, colour):
             min_dist=distance
     return min_dist
 
-def evaluate(evaluation_feature, previous_evaluation_feature):
+def evaluate(evaluation_feature, previous_evaluation_feature, weights):
     # no previous_evaluation_feature. this is the very first state. return 0
     if previous_evaluation_feature == None:
         return 0
@@ -143,7 +143,7 @@ def evaluate(evaluation_feature, previous_evaluation_feature):
 
 
 #a function to generate new board representation based on the action
-def generate_state(previous_state, action):
+def generate_state(previous_state, action, weights):
     colour = next_colour[previous_state.colour]
     board = board_update(previous_state.colour,previous_state.board,action)
     #exit action. update the exit pieces count
@@ -153,7 +153,7 @@ def generate_state(previous_state, action):
     else:
         exited_piece_count = previous_state.exited_piece_count
 
-    return State(colour,board, exited_piece_count, action, previous_state)
+    return State(colour,board, exited_piece_count, action, previous_state, weights)
 
 
 
@@ -451,6 +451,10 @@ class ExamplePlayer:
             'g': [(0,-3),(1,-3),(2,-3),(3,-3)],
             'b': [(0,3),(1,2),(2,1),(3,0)]
         }
+        #load the weight
+
+        f = open("/Users/zhangdanielle/code/COMP30024/part-B/beta_come/weight",'r')
+
 
 
 
