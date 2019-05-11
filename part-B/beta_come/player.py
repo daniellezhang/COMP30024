@@ -82,7 +82,7 @@ class State(object):
         self.board = board
         self.action = action
         self.exited_piece_count = exited_piece_count
-      
+
     def print_state(self):
         print(self.colour)
         print(self.action)
@@ -103,7 +103,7 @@ def features(colour,state):
         n_pieces_missing = 0
     else:
         n_pieces_missing = n_pieces_left - n_pieces_on_board
-    sum_exit_distance = sum_squared_distance_to_exit(board, colour, n_pieces_left)
+    sum_exit_distance = sum_squared_distance_to_exit(board, colour)
     return (n_pieces_missing,n_pieces_left,sum_exit_distance)
 
 
@@ -112,15 +112,10 @@ def hex_distance(coordinate1, coordinate2):
     + abs(coordinate1[0]+coordinate1[1]-coordinate2[0]-coordinate2[1])
     +abs(coordinate1[1]-coordinate2[1]))/2
 
-def sum_squared_distance_to_exit(board, colour,n_pieces_left):
-    min_dist_list = []
+def sum_squared_distance_to_exit(board, colour):
+    sum=0
     for piece in board[colour]:
-        min_dist_list.append(squared_exit_distance(piece, colour))
-    min_dist_list.sort()
-    sum = 0
-    for i in range(0,n_pieces_left):
-        sum += min_dist_list[i]
-
+        sum += squared_exit_distance(piece, colour)
     return sum
 
 def squared_exit_distance(piece, colour):
@@ -192,6 +187,7 @@ class Node(object):
                     #Recursing, to find the possible moves of all the children, new position of the piece we just took.
                     self.children.append(Node(self.i_depth - 1, next_colour[self.colour], new_state,
                                               self.Evaluation(self.i_depth - 1,new_state, self.state)))
+                i+=1
 
 
     #Evaluation function that takes in the board
@@ -199,10 +195,10 @@ class Node(object):
     def Evaluation(self,i_depth, newState, previousState):
 
         if i_depth == 0:
-            evaluationVector = []
+            evaluationVector = [0]*3
             for colour in 'rgb':
                 index = player_index[colour]
-                evaluationVector[index] = evaluate(newState, previousState)
+                evaluationVector[index]=evaluate(colour,newState, previousState)
 
             return evaluationVector
         else:
@@ -336,15 +332,6 @@ def possible_action(piece_index, board, player):
             if not out_of_board:
                 #check if there is other piece or block on this new_position
                 occupied = False
-                """for i in range(len(pieces)):
-                    if pieces[i] == jump_pos:
-                        occupied = True
-                        break
-                if not occupied:
-                    for block in blocks:
-                        if block == jump_pos:
-                            occupied = True
-                            break"""
                 for colour in "rgb":
                     for j in range(len(board[colour])):
                         if board[colour][j] == jump_pos:
@@ -364,26 +351,6 @@ def possible_action(piece_index, board, player):
 
 
 def print_board(board_dict, message="", debug=False):
-    """
-    Helper function to print a drawing of a hexagonal board's contents.
-
-    Arguments:
-
-    * `board_dict` -- dictionary with tuples for keys and anything printable
-    for values. The tuple keys are interpreted as hexagonal coordinates (using
-    the axial coordinate system outlined in the project specification) and the
-    values are formatted as strings and placed in the drawing at the corres-
-    ponding location (only the first 5 characters of each string are used, to
-    keep the drawings small). Coordinates with missing values are left blank.
-
-    Keyword arguments:
-
-    * `message` -- an optional message to include on the first line of the
-    drawing (above the board) -- default `""` (resulting in a blank message).
-    * `debug` -- for a larger board drawing that includes the coordinates
-    inside each hex, set this to `True` -- default `False`.
-    * Or, any other keyword arguments! They will be forwarded to `print()`.
-    """
 
     # Set up the board template:
     if not debug:
@@ -483,11 +450,12 @@ class ExamplePlayer:
         actions.
         """
 
-        tree_depth = 4
+        tree_depth = 3
         c_curr_player = self.colour
         head_state = State(self.colour, self.board, self.exited_piece_count, None, None)
-        node = Node(tree_depth, c_curr_player, board_dict, head_state)
-
+        print("Hello world")
+        node = Node(tree_depth, c_curr_player, head_state)
+        print("Hello world")
         #This is the node after the best move has been made.
         bestNode = None
 
@@ -507,7 +475,7 @@ class ExamplePlayer:
 
     def update(self, colour, action):
         # TODO: Update state representation in response to action.
-        self.board_dict = board_update(colour, self.board_dict, action)
+        self.board = board_update(colour, self.board, action)
         if action[0] == "EXIT":
             self.exited_piece_count[colour] += 1
         return
