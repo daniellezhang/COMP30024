@@ -88,6 +88,7 @@ class State(object):
         else:
             previous_evaluation_feature = features(colour, previous_state.board, previous_state.exited_piece_count)
         self.evaluation = evaluate(self.evaluation_feature, previous_evaluation_feature)
+
     def print_state(self):
         print(self.colour)
         print(self.action)
@@ -164,13 +165,12 @@ def generate_state(previous_state, action):
 
 # a class for the node in the maxN search tree
 class Node(object):
-    def __init__(self, i_depth, colour, d_boardDict,state,t_evalue = (0, 0, 0)):
+    def __init__(self, i_depth, colour, state, t_evalue = None):
 
         #Put blocks after clarifying the state of the program.
 
         self.i_depth = i_depth                  #Depth of the tree
         self.colour = colour    #Colour of the player that is taking the action
-        self.d_boardDict = d_boardDict          #Representation of the board
         self.t_evalue = t_evalue                #The evaluation tuple to be used for MaxN
         self.state = state                      #the state of the board
         self.children = []                      #Children to each node
@@ -179,9 +179,8 @@ class Node(object):
     def CreateChildren(self):
         if self.i_depth >= 0:
 
-            colourPieces = self.d_boardDict[self.c_playerColour]   #List of tuples containing the
+            colourPieces = self.state.board[self.colour]   #List of tuples containing the
                                                                    # coords of the pieces of this specific colour
-
             length = len(colourPieces) #Length of the list of all the tuples
                                        #of all the positions of the specific colour
             i = 0
@@ -189,33 +188,31 @@ class Node(object):
 
                 #As taken from the definition of possible_action
                 #To generate all the possible actions for each piece individually
-                for j in possible_action(i, colourPieces, blocks, self.c_playerColour):
+                for action in possible_action(i, self.state.board, self.colour):
 
-
-                    #Change this for state instead of board, initial state?
-                    #When we take the move, how that selected piece is gonna change.
-                    changedBoard = self.d_boardDict
-
-                    #Explicitly moving piece to the new position on the representation.
-                    changedBoard[self.c_playerColour][i] = j
+                    new_state = generate_state(self.state,action)
 
                     #Recursing, to find the possible moves of all the children, new position of the piece we just took.
-                    self.children.append(Node(self.i_depth - 1, next_colour[self.c_playerColour],
-                                              changedBoard,
-                                              self.RealEvaluation(changedBoard)))
+                    self.children.append(Node(self.i_depth - 1, next_colour[self.colour], new_state,
+                                              self.Evaluation(self.i_depth - 1,new_state, self.state)))
 
 
     #Evaluation function that takes in the board
     #representation and returns a tuple of the rewards.
-    def RealEvaluation(self, boardState):
+    def Evaluation(self,i_depth, newState, previousState):
 
-        #Put the code for the evaluation here
-        #We need an evaluation function which returns values for all the positions of the tuple.
-        #for the algorithm to work
-        return 0
+        if i_depth == 0:
+            evaluationVector = []
+            for colour in 'rgb':
+                index = player_index[colour]
+                evaluationVector[index] = evaluate(newState, previousState)
+
+            return evaluationVector
+        else:
+            return None
 
 #======================================================================================================================
-#ALGORITHM
+#ALGORITHM_
 def MaxN(node, i_depth, c_playerColour):
 
     #Check if the depth is 0 or we have reached the node that is a win or lose condition.
@@ -473,10 +470,6 @@ class ExamplePlayer:
             'b': [(0,3),(1,2),(2,1),(3,0)]
         }
 
-
-
-
-
     def action(self):
         """
         This method is called at the beginning of each of your turns to request
@@ -489,37 +482,27 @@ class ExamplePlayer:
         actions.
         """
 
-        '''Note - For our purposes, we may assume that update method updates the representation of the board that we have,
-        essentially, that we have an updated board before a call to action is passed.
-        board_dict
+        tree_depth = 4
+        c_curr_player = self.colour
+        head_state = State(self.colour, self.board, self.exited_piece_count, None, None)
+        node = Node(tree_depth, c_curr_player, board_dict, head_state)
 
-        The action is defined to talk about only our program.
-        board_dict - Dict representing the dictionary
-        board_state - The state of the board.
-        Not passing t_evalue as default values are already present, what do the default values do?'''
+        #This is the node after the best move has been made.
+        bestNode = None
 
-
-        tree_depth = 4  #Depth of the whole tree to be generated
-        c_curr_player = self.colour    #For representing it is our turn.
-        node = Node(tree_depth, c_curr_player, board_dict, board_state)        #Creating a 4-depth tree at every turn.
-
-        bestMove = -100
         t_max_value = (-maxsize, -maxsize, -maxsize)
-        i_eval_depth = 3
+        i_eval_depth = tree_depth - 1
 
         #Determine the best move
         for child in node.children:
+
             t_val = MaxN(child, i_eval_depth, next_colour[c_curr_player])
-            if max(t_max_value[player_index[c_curr_player]], t_val[player_index[c_curr_player]]) == t_val[player_index[c_curr_player]]:
+            if max(t_max_value[player_index[c_curr_player]],
+                   t_val[player_index[c_curr_player]]) == t_val[player_index[c_curr_player]]:
                 t_max_value = t_val
-                bestMove = child
+                bestNode = child
 
-        #Return in the state we need it.
-
-        #Return the move that we are gonna take
-        # TODO: Decide what action to take.
-        return ("PASS", None)
-
+        return bestNode.state.action
 
     def update(self, colour, action):
         # TODO: Update state representation in response to action.
