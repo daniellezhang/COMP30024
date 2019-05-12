@@ -6,7 +6,7 @@ exit_dict = {"r":[(3,-3),(3,-2),(3,-1),(3,0)],
 "g":[(-3,3),(-2,3),(-1,3),(-0,3)],
 "b":[(-3,0),(-2,-1),(-1,-2),(0,-3)]}
 
-weights = (1,1,1)
+weights = (1,5,1)
 
 board_dict = {          #Representation of the board
 
@@ -249,8 +249,8 @@ def ring_generator(position, ring_no = 1):
     coordinates = []
     x_coordinates = []
     y_coordinates = []
+    position = (int(position[0]),int(position[1]))
 
-    #Code to generate the X coordinates
     for i in range(position[0] - ring_no, position[0] + ring_no + 1):
         x_coordinates.append(i)
     for j in range(1, ring_no):
@@ -259,7 +259,6 @@ def ring_generator(position, ring_no = 1):
         x_coordinates.append(k)
     for j in range(1, ring_no):
         x_coordinates.append(k)
-
     #Code to generate the Y coordinates
     for i in range(position[1], position[1] - ring_no - 1, -1):
         y_coordinates.append(i)
@@ -426,13 +425,19 @@ class ExamplePlayer:
         strings "red", "green", or "blue" correspondingly.
         """
         # TODO: Set up state representation.
-        self.colour = colour
+        self.colour = colour[0]
         self.exited_piece_count = {"r":0, "g":0, "b":0}
-        self.board = {
+        """self.board = {
             'r': [(-3,0),(-3,1),(-3,2),(-3,3)],
             'g': [(0,-3),(1,-3),(2,-3),(3,-3)],
             'b': [(0,3),(1,2),(2,1),(3,0)]
+        }"""
+        self.board = {
+                'r': [(-3,0),(-3,1),(-3,2),(-3,3)],
+                'g': [(0,-3),(1,-3),(2,-3),(3,-3)],
+                'b': [(0,3),(1,2),(2,1),(3,0)]
         }
+
         #load the weight
 
         #f = open("/Users/zhangdanielle/code/COMP30024/part-B/beta_come/weight",'r')
@@ -453,9 +458,8 @@ class ExamplePlayer:
         tree_depth = 3
         c_curr_player = self.colour
         head_state = State(self.colour, self.board, self.exited_piece_count, None, None)
-        print("Hello world")
         node = Node(tree_depth, c_curr_player, head_state)
-        print("Hello world")
+        print("#Hello world")
         #This is the node after the best move has been made.
         bestNode = None
 
@@ -466,7 +470,11 @@ class ExamplePlayer:
         for child in node.children:
 
             t_val = MaxN(child, i_eval_depth, next_colour[c_curr_player])
-            if max(t_max_value[player_index[c_curr_player]],
+            if child.state.action[0] == "EXIT":
+                t_max_value = t_val
+                bestNode = child
+                return child.state.action
+            elif max(t_max_value[player_index[c_curr_player]],
                    t_val[player_index[c_curr_player]]) == t_val[player_index[c_curr_player]]:
                 t_max_value = t_val
                 bestNode = child
@@ -475,9 +483,9 @@ class ExamplePlayer:
 
     def update(self, colour, action):
         # TODO: Update state representation in response to action.
-        self.board = board_update(colour, self.board, action)
+        self.board = board_update(colour[0], self.board, action)
         if action[0] == "EXIT":
-            self.exited_piece_count[colour] += 1
+            self.exited_piece_count[colour[0]] += 1
         return
 
 
