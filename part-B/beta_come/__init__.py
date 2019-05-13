@@ -1,1 +1,1 @@
-from your_team_name.player import ExamplePlayer as Player
+from beta_come.player import MaxNPlayer as Player
