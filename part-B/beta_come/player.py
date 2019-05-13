@@ -6,7 +6,9 @@ exit_dict = {"r":[(3,-3),(3,-2),(3,-1),(3,0)],
 "g":[(-3,3),(-2,3),(-1,3),(-0,3)],
 "b":[(-3,0),(-2,-1),(-1,-2),(0,-3)]}
 
-weights = (1,5,1)
+#weights for evaluation Function
+#(n_pieces_missing,n_pieces_left,sum_exit_distance,oppoenent_pieces,is_exit)
+weights = (1,1,1,1)
 
 board_dict = {          #Representation of the board
 
@@ -104,7 +106,11 @@ def features(colour,state):
     else:
         n_pieces_missing = n_pieces_left - n_pieces_on_board
     sum_exit_distance = sum_squared_distance_to_exit(board, colour)
-    return (n_pieces_missing,n_pieces_left,sum_exit_distance)
+    oppoenent_pieces = 0
+    for opponent in "rgb":
+        if opponent != colour:
+            oppoenent_pieces += len(board[opponent])
+    return (n_pieces_missing,n_pieces_left,sum_exit_distance,oppoenent_pieces)
 
 
 def hex_distance(coordinate1, coordinate2):
@@ -309,7 +315,6 @@ def possible_action(piece_index, board, player):
     exit_list = exit_dict[player]
     for pos in exit_list:
         if pos == current_piece:
-            #actions.append(Operation(current_piece,removed,"EXIT"))
             actions.append(("EXIT",current_piece))
 
     #go through the list of neighbours to find possible moves
@@ -338,11 +343,9 @@ def possible_action(piece_index, board, player):
                             break
                 #position is not occupied. Jump action is valid
                 if not occupied:
-                    #actions.append(Operation(current_piece,jump_pos,"JUMP"))
                     actions.append(("JUMP",(current_piece,jump_pos)))
         #neighbour not occupied. A move action is valid
         else:
-            #actions.append(Operation(current_piece, neighbour,"MOVE"))
             actions.append(("MOVE",(current_piece,neighbour)))
 
     return actions
@@ -412,7 +415,7 @@ def print_board(board_dict, message="", debug=False):
 
 
 
-class ExamplePlayer:
+class MaxNPlayer:
     def __init__(self, colour):
         """
         This method is called once at the beginning of the game to initialise
@@ -482,13 +485,9 @@ class ExamplePlayer:
         return bestNode.state.action
 
     def update(self, colour, action):
-        # TODO: Update state representation in response to action.
+        #update the board reprensentation
         self.board = board_update(colour[0], self.board, action)
+        #update the exited pieces count
         if action[0] == "EXIT":
             self.exited_piece_count[colour[0]] += 1
         return
-
-
-#Add evaluation function, figure out if it would take in the board_dict or state of the game,
-#Ensure the code for Node and evaluation function work in Lieu.
-#Change MaxN to return in the representation we want.
