@@ -6,10 +6,6 @@ exit_dict = {"r":[(3,-3),(3,-2),(3,-1),(3,0)],
 "g":[(-3,3),(-2,3),(-1,3),(-0,3)],
 "b":[(-3,0),(-2,-1),(-1,-2),(0,-3)]}
 
-#weights for evaluation Function
-#(n_pieces_missing,n_pieces_left,sum_exit_distance,oppoenent_pieces,is_exit)
-weights = (1,1,1,1)
-
 board_dict = {          #Representation of the board
 
     'r': [(-3,0),(-3,1),(-3,2),(-3,3)],
@@ -105,12 +101,16 @@ def features(colour,state):
         n_pieces_missing = 0
     else:
         n_pieces_missing = n_pieces_left - n_pieces_on_board
-    sum_exit_distance = sum_squared_distance_to_exit(board, colour)
-    oppoenent_pieces = 0
+    if n_pieces_on_board != 0:
+        avg_exit_distance = sum_squared_distance_to_exit(board, colour)/n_pieces_on_board
+    else:
+        avg_exit_distance = 0
+    missing_oppoenent_pieces = 0
     for opponent in "rgb":
         if opponent != colour:
-            oppoenent_pieces += len(board[opponent])
-    return (n_pieces_missing,n_pieces_left,sum_exit_distance,oppoenent_pieces)
+            if len(board[opponent]) + exited_piece_count[opponent] < 4:
+                missing_oppoenent_pieces += (len(board[opponent]) + exited_piece_count[opponent])-4
+    return (n_pieces_missing,n_pieces_left,avg_exit_distance,missing_oppoenent_pieces)
 
 
 def hex_distance(coordinate1, coordinate2):
@@ -130,18 +130,20 @@ def squared_exit_distance(piece, colour):
         distance = hex_distance(piece, exit)
         if(distance < min_dist):
             min_dist=distance
+    if min_dist == 0:
+        min_dist += 1
     return min_dist
 
 #evaluate the state from the given player's perspective
-def evaluate(colour, current_state,previous_state):
-    previous_evaluation_feature = features(colour, previous_state)
+def evaluate(colour, current_state,previous_state, weight):
+    #previous_evaluation_feature = features(colour, previous_state)
     current_evaluation_feature = features(colour, current_state)
     # no previous_evaluation_feature. this is the very first state. return 0
-    if previous_evaluation_feature == None:
-        return 0
+    #if previous_evaluation_feature == None:
+    #    return 0
     sum = 0
-    for i in range(0,3):
-        sum += weights[i]*(previous_evaluation_feature[i] - current_evaluation_feature[i])
+    for i in range(len(weight)):
+        sum += weight[i]*(current_evaluation_feature[i])
 
     return sum
 
@@ -153,7 +155,7 @@ def generate_state(previous_state, action):
     #exit action. update the exit pieces count
     if(action[0] == "EXIT"):
         exited_piece_count = copy.deepcopy(previous_state.exited_piece_count)
-        exited_piece_count[colour] += 1
+        exited_piece_count[previous_state.colour] += 1
     else:
         exited_piece_count = previous_state.exited_piece_count
 
@@ -163,15 +165,16 @@ def generate_state(previous_state, action):
 
 # a class for the node in the maxN search tree
 class Node(object):
-    def __init__(self, i_depth, colour, state, t_evalue = None):
+    def __init__(self, i_depth, colour, state,weight, t_evalue = None):
 
         #Put blocks after clarifying the state of the program.
 
         self.i_depth = i_depth                  #Depth of the tree
         self.colour = colour    #Colour of the player that is taking the action
-        self.t_evalue = t_evalue                #The evaluation tuple to be used for MaxN
+        self.t_evalue = t_evalue                #The evaluation vector to be used for MaxN
         self.state = state                      #the state of the board
         self.children = []                      #Children to each node
+        self.weight = weight                             #Weight vector used for evaluation
         self.CreateChildren()                   #Method to create children to each node
 
     def CreateChildren(self):
@@ -182,29 +185,38 @@ class Node(object):
             length = len(colourPieces) #Length of the list of all the tuples
                                        #of all the positions of the specific colour
             i = 0
+            n_action = 0
             while(i < length):
 
                 #As taken from the definition of possible_action
                 #To generate all the possible actions for each piece individually
                 for action in possible_action(i, self.state.board, self.colour):
+                    n_action += 1
 
                     new_state = generate_state(self.state,action)
 
                     #Recursing, to find the possible moves of all the children, new position of the piece we just took.
-                    self.children.append(Node(self.i_depth - 1, next_colour[self.colour], new_state,
-                                              self.Evaluation(self.i_depth - 1,new_state, self.state)))
+                    self.children.append(Node(self.i_depth - 1, next_colour[self.colour], new_state,self.weight,
+                                              self.evaluation(self.i_depth - 1,new_state, self.state, self.weight)))
                 i+=1
+
+            #no action at all. this player cannot play any move. add PASS action
+            if n_action == 0:
+                action  = ("PASS", None)
+                new_state = generate_state(self.state,action)
+                self.children.append(Node(self.i_depth - 1, next_colour[self.colour], new_state,self.weight,
+                                          self.evaluation(self.i_depth - 1,new_state, self.state, self.weight)))
 
 
     #Evaluation function that takes in the board
-    #representation and returns a tuple of the rewards.
-    def Evaluation(self,i_depth, newState, previousState):
+    #representation and returns a list of the rewards.
+    def evaluation(self,i_depth, newState, previousState, weight):
 
         if i_depth == 0:
             evaluationVector = [0]*3
             for colour in 'rgb':
                 index = player_index[colour]
-                evaluationVector[index]=evaluate(colour,newState, previousState)
+                evaluationVector[index]=evaluate(colour,newState, previousState, weight)
 
             return evaluationVector
         else:
@@ -442,9 +454,17 @@ class MaxNPlayer:
         }
 
         #load the weight
-
-        #f = open("/Users/zhangdanielle/code/COMP30024/part-B/beta_come/weight",'r')
-
+        f = open("/Users/zhangdanielle/code/COMP30024/part-B/beta_come/weight",'r')
+        all_weights = f.readlines()
+        f.close()
+        latest_weight = all_weights[-1].split(',')
+        for i in range(len(latest_weight)):
+            latest_weight[i] = float(latest_weight[i])
+        #weights for evaluation Function
+        #(n_pieces_missing,n_pieces_left,sum_exit_distance,oppoenent_pieces)
+        self.weight = latest_weight
+        #create a new file to record the evaluation for every output action
+        self.filename = "/Users/zhangdanielle/code/COMP30024/part-B/beta_come/"+colour
 
     def action(self):
         """
@@ -461,8 +481,7 @@ class MaxNPlayer:
         tree_depth = 3
         c_curr_player = self.colour
         head_state = State(self.colour, self.board, self.exited_piece_count, None, None)
-        node = Node(tree_depth, c_curr_player, head_state)
-        print("#Hello world")
+        node = Node(tree_depth, c_curr_player, head_state, self.weight)
         #This is the node after the best move has been made.
         bestNode = None
 
@@ -476,11 +495,34 @@ class MaxNPlayer:
             if child.state.action[0] == "EXIT":
                 t_max_value = t_val
                 bestNode = child
-                return child.state.action
+                break
             elif max(t_max_value[player_index[c_curr_player]],
                    t_val[player_index[c_curr_player]]) == t_val[player_index[c_curr_player]]:
                 t_max_value = t_val
                 bestNode = child
+
+        '''#take the risk
+        if t_max_value[player_index[self.colour]] == 0:
+            if secondBest != None:
+                bestNode = secondBest'''
+
+        #write the evaluation feature values and evaluation value into the file
+        if bestNode != None:
+            f = open(self.filename,'a+')
+            line =""
+            previous_evaluation_feature = features(self.colour, head_state)
+            new_evaluation_feature = features(self.colour, bestNode.state)
+            for i in range(len(previous_evaluation_feature)):
+                line += str(previous_evaluation_feature[i]-new_evaluation_feature[i])
+                line +=','
+            line += str(evaluate(self.colour, bestNode.state, head_state, self.weight))
+            line += '\n'
+            f.write(line)
+            f.close()
+
+        if bestNode == None:
+            bestNode = node
+            bestNode.state.action = ("PASS",None)
 
         return bestNode.state.action
 
