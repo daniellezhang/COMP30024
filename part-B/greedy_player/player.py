@@ -3,7 +3,7 @@ from beta_come.state import State
 from beta_come.player import evaluate, features
 import random
 
-class RandomPlayer:
+class GreedyPlayer:
     def __init__(self, colour):
             self.colour = colour[0]
             self.exited_piece_count = {"r":0, "g":0, "b":0}
@@ -27,25 +27,36 @@ class RandomPlayer:
 
 
     def action(self):
-        actions = []
+
         output = None
+        eval = None
+        feature = None
         for i in range(len(self.board[self.colour])):
             for action in possible_action(i, self.board, self.colour):
-                actions.append(action)
-        if len(actions) > 1:
-            index = random.randint(0,len(actions)-1)
-            output = actions[index]
-        else:
+                new_board = board_update(self.colour, self.board, action)
+                current_state = State(self.colour,new_board, self.exited_piece_count, output, None)
+                new_eval = evaluate(self.colour, current_state, self.weight)
+                if eval == None or new_eval > eval:
+                    eval = new_eval
+                    output = action
+                    feature = features(self.colour, current_state)
+                if action[0] == "EXIT":
+                    eval = new_eval
+                    output = action
+                    feature = features(self.colour, current_state)
+                    break
+        if output == None:
             output = ("PASS",None)
-        new_board = board_update(self.colour, self.board, output)
-        current_state = State(self.colour,new_board, self.exited_piece_count, output, None)
+            current_state = State(self.colour,self.board, self.exited_piece_count, output, None)
+            eval = evaluate(self.colour, current_state, self.weight)
+            feature = features(self.colour, current_state)
+
         f = open(self.filename,'a+')
         line =""
-        new_evaluation_feature = features(self.colour, current_state)
-        for i in range(len(new_evaluation_feature)):
-            line += str(new_evaluation_feature[i])
+        for i in range(len(feature)):
+            line += str(feature[i])
             line +=','
-        line += str(evaluate(self.colour, current_state, self.weight))
+        line += str(eval)
         line += '\n'
         f.write(line)
         f.close()

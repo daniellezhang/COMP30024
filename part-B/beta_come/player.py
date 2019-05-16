@@ -1,17 +1,12 @@
 import copy
 import sys
 from sys import maxsize
+from beta_come.state import State
+from beta_come.helper import print_board,possible_action, board_update
 
 exit_dict = {"r":[(3,-3),(3,-2),(3,-1),(3,0)],
 "g":[(-3,3),(-2,3),(-1,3),(-0,3)],
 "b":[(-3,0),(-2,-1),(-1,-2),(0,-3)]}
-
-board_dict = {          #Representation of the board
-
-    'r': [(-3,0),(-3,1),(-3,2),(-3,3)],
-    'g': [(0,-3),(1,-3),(2,-3),(3,-3)],
-    'b': [(0,3),(1,2),(2,1),(3,0)]
-}
 
 next_colour = {         #To decide which player's turn is next
     'r':'g',
@@ -26,86 +21,9 @@ player_index = {
 'b': 2
 
 }
-blocks = {}             #No blocks atm, for ease.
 
-repCopy = board_dict    #Representational copy of the board to be passed.
-
-# update the board based on action
-def board_update(player, board_dict, action):
-    #pass action. no change to the state
-    if action[0] == "PASS":
-        return board_dict
-    #find the piece that took the action
-    new_board = copy.deepcopy(board_dict)
-    if action[0] == "MOVE" or action[0] == "JUMP":
-        moved_piece = action[1][0]
-    else:
-        moved_piece = action[1]
-    for i in range(len(board_dict[player])):
-        if board_dict[player][i] == moved_piece:
-            current = i
-            break
-
-    #move action. update the position of moved piece
-    if action[0] == "MOVE":
-        new_board[player][current] = action[1][1]
-    #jump action
-    elif action[0] == "JUMP":
-        #update the position of the moved piece
-        new_board[player][current] = action[1][1]
-        row = (action[1][0][0]+action[1][1][0])/2
-        col =  (action[1][0][1]+action[1][1][1])/2
-        middle_piece = (row, col)
-        #check whether the piece that is jumped over need to be converted
-        for colour in "rgb":
-            for i in range(len(board_dict[colour])):
-                if middle_piece == board_dict[colour][i]:
-                    #convert the middle piece if it has a different colour
-                    if colour != player:
-                        new_board[player].append(middle_piece)
-                        new_board[colour].remove(middle_piece)
-                    break
-    #exit action. remove the piece from the board
-    elif action[0] == "EXIT":
-        new_board[player].remove(moved_piece)
-
-
-    return new_board
-
-#This function sorts the pieces based on the distance to their exit positions
-def sorted_pieces(board, colour):
-
-    computationList = []
-    orderedList = []
-
-    for piece in board[colour]:
-        computationList.append((exit_distance(piece, colour), piece))
-
-    computationList = sorted(computationList)
-
-    for i, j in computationList:
-        orderedList.append(j)
-
-    board[colour] = orderedList
-
-    return
-
-#a class to represent the state of the game from the perspective of the given player
-class State(object):
-    def __init__(self, colour, board, exited_piece_count, action, previous_state):
-        self.colour = colour
-        self.board = board
-        self.action = action
-        self.exited_piece_count = exited_piece_count
-
-    def print_state(self):
-        print(self.colour)
-        print(self.action)
-        board_dict = {}
-        for colour in 'rgb':
-            for piece in self.board[colour]:
-                board_dict[piece] = colour
-        print_board(board_dict)
+#threshold to turn off the player's greedy mode
+greedy_distance = 1
 
 #generate values for feature that are used for evaluation function
 #from the perspective of the given player
@@ -152,18 +70,44 @@ def exit_distance(piece, colour):
     return min_dist*min_dist
 
 #evaluate the state from the given player's perspective
-def evaluate(colour, current_state,previous_state, weight):
-    #previous_evaluation_feature = features(colour, previous_state)
+def evaluate(colour, current_state, weight):
     current_evaluation_feature = features(colour, current_state)
-    # no previous_evaluation_feature. this is the very first state. return 0
-    #if previous_evaluation_feature == None:
-    #    return 0
     sum = 0
     for i in range(len(weight)):
         sum += weight[i]*(current_evaluation_feature[i])
 
     return sum
 
+#find the closest opponent's distance to the given player
+def closest_opponent(colour, board):
+    min_dist = 100
+    pieces = board[colour]
+    for c in "rgb":
+        if c != colour:
+            for opponent in board[c]:
+                for piece in pieces:
+                    dist = hex_distance(piece, opponent)
+                    if dist <min_dist:
+                        min_dist = dist
+    return min_dist
+
+#This function sorts the pieces based on the distance to their exit positions
+def sorted_pieces(board, colour):
+
+    computationList = []
+    orderedList = []
+
+    for piece in board[colour]:
+        computationList.append((exit_distance(piece, colour), piece))
+
+    computationList = sorted(computationList)
+
+    for i, j in computationList:
+        orderedList.append(j)
+
+    board[colour] = orderedList
+
+    return
 
 #a function to generate new board representation based on the action
 def generate_state(previous_state, action):
@@ -242,7 +186,7 @@ class Node(object):
             evaluationVector = [0]*3
             for colour in 'rgb':
                 index = player_index[colour]
-                evaluationVector[index]=evaluate(colour,newState, previousState, weight)
+                evaluationVector[index]=evaluate(colour,newState, weight)
 
             return evaluationVector
         else:
@@ -283,175 +227,6 @@ def MaxN(node, i_depth, c_playerColour):
     #Draw visualization.
     return t_maxEvalue
 
-#At every move, a new tree has to be generated? Create the maincode or wincondition in such a way.
-#The tree generation should keep happening while the Win condition is not met by our or any
-#Other player.
-
-
-def ring_generator(position, ring_no = 1):
-
-    coordinates = []
-    x_coordinates = []
-    y_coordinates = []
-    position = (int(position[0]),int(position[1]))
-
-    for i in range(position[0] - ring_no, position[0] + ring_no + 1):
-        x_coordinates.append(i)
-    for j in range(1, ring_no):
-        x_coordinates.append(i)
-    for k in range(i, position[0] - ring_no - 1, -1):
-        x_coordinates.append(k)
-    for j in range(1, ring_no):
-        x_coordinates.append(k)
-    #Code to generate the Y coordinates
-    for i in range(position[1], position[1] - ring_no - 1, -1):
-        y_coordinates.append(i)
-    for j in range(1, ring_no):
-        y_coordinates.append(i)
-    for k in range(i, position[1] + ring_no + 1):
-        y_coordinates.append(k)
-    for j in range(1, ring_no):
-        y_coordinates.append(k)
-    for l in range(k, position[1], -1):
-        y_coordinates.append(l)
-
-    #To combine X and Y
-    for i in range(0, len(x_coordinates)):
-        coordinates.append((x_coordinates[i], y_coordinates[i]))
-
-    return coordinates
-
-#return a list of positions that are neighbours to the given position
-def neighbours(player):
-
-    neighbours = []
-    forbidden_Coords = ring_generator((0, 0), 4)
-    moves = ring_generator(player)
-
-    for i in moves:
-        if not (i in forbidden_Coords):
-            neighbours.append(i)
-    return neighbours
-
-
-#Function that return a list of possible operations
-def possible_action(piece_index, board, player):
-    current_piece = board[player][piece_index]
-    all_neighbours = neighbours(current_piece)
-    is_occupied = [False]*len(all_neighbours)
-
-    actions = []
-    #check if there is any neighbour that is occupied by other pieces
-    for colour in "rgb":
-        for i in range(len(board[colour])):
-            if i != piece_index or colour != player:
-                for j in range(len(all_neighbours)):
-                    if all_neighbours[j] == board[colour][i]:
-                        is_occupied[j] = True
-
-    #check if the current piece is able to exit the board
-    exit_list = exit_dict[player]
-    for pos in exit_list:
-        if pos == current_piece:
-            actions.append(("EXIT",current_piece))
-
-    #go through the list of neighbours to find possible moves
-    for i in range(len(all_neighbours)):
-        neighbour = all_neighbours[i]
-        #neighbour is occupied. Check if a jump action is valid
-        if is_occupied[i]:
-            q_difference = neighbour[0]-current_piece[0]
-            r_difference = neighbour[1]-current_piece[1]
-            jump_pos = (neighbour[0]+q_difference, neighbour[1]+r_difference)
-            #check if the new position after a jump action is on the board
-            out_of_board = False
-            invalid_position = ring_generator([0,0],4)
-            for position in invalid_position:
-                if position == jump_pos:
-                    out_of_board = True
-                    break
-            # new position is on the board
-            if not out_of_board:
-                #check if there is other piece or block on this new_position
-                occupied = False
-                for colour in "rgb":
-                    for j in range(len(board[colour])):
-                        if board[colour][j] == jump_pos:
-                            occupied = True
-                            break
-                #position is not occupied. Jump action is valid
-                if not occupied:
-                    actions.append(("JUMP",(current_piece,jump_pos)))
-        #neighbour not occupied. A move action is valid
-        else:
-            actions.append(("MOVE",(current_piece,neighbour)))
-
-    return actions
-
-
-
-def print_board(board_dict, message="", debug=False):
-
-    # Set up the board template:
-    if not debug:
-        # Use the normal board template (smaller, not showing coordinates)
-        template = """# {0}
-#           .-'-._.-'-._.-'-._.-'-.
-#          |{16:}|{23:}|{29:}|{34:}|
-#        .-'-._.-'-._.-'-._.-'-._.-'-.
-#       |{10:}|{17:}|{24:}|{30:}|{35:}|
-#     .-'-._.-'-._.-'-._.-'-._.-'-._.-'-.
-#    |{05:}|{11:}|{18:}|{25:}|{31:}|{36:}|
-#  .-'-._.-'-._.-'-._.-'-._.-'-._.-'-._.-'-.
-# |{01:}|{06:}|{12:}|{19:}|{26:}|{32:}|{37:}|
-# '-._.-'-._.-'-._.-'-._.-'-._.-'-._.-'-._.-'
-#    |{02:}|{07:}|{13:}|{20:}|{27:}|{33:}|
-#    '-._.-'-._.-'-._.-'-._.-'-._.-'-._.-'
-#       |{03:}|{08:}|{14:}|{21:}|{28:}|
-#       '-._.-'-._.-'-._.-'-._.-'-._.-'
-#          |{04:}|{09:}|{15:}|{22:}|
-#          '-._.-'-._.-'-._.-'-._.-'"""
-    else:
-        # Use the debug board template (larger, showing coordinates)
-        template = """# {0}
-#              ,-' `-._,-' `-._,-' `-._,-' `-.
-#             | {16:} | {23:} | {29:} | {34:} |
-#             |  0,-3 |  1,-3 |  2,-3 |  3,-3 |
-#          ,-' `-._,-' `-._,-' `-._,-' `-._,-' `-.
-#         | {10:} | {17:} | {24:} | {30:} | {35:} |
-#         | -1,-2 |  0,-2 |  1,-2 |  2,-2 |  3,-2 |
-#      ,-' `-._,-' `-._,-' `-._,-' `-._,-' `-._,-' `-.
-#     | {05:} | {11:} | {18:} | {25:} | {31:} | {36:} |
-#     | -2,-1 | -1,-1 |  0,-1 |  1,-1 |  2,-1 |  3,-1 |
-#  ,-' `-._,-' `-._,-' `-._,-' `-._,-' `-._,-' `-._,-' `-.
-# | {01:} | {06:} | {12:} | {19:} | {26:} | {32:} | {37:} |
-# | -3, 0 | -2, 0 | -1, 0 |  0, 0 |  1, 0 |  2, 0 |  3, 0 |
-#  `-._,-' `-._,-' `-._,-' `-._,-' `-._,-' `-._,-' `-._,-'
-#     | {02:} | {07:} | {13:} | {20:} | {27:} | {33:} |
-#     | -3, 1 | -2, 1 | -1, 1 |  0, 1 |  1, 1 |  2, 1 |
-#      `-._,-' `-._,-' `-._,-' `-._,-' `-._,-' `-._,-'
-#         | {03:} | {08:} | {14:} | {21:} | {28:} |
-#         | -3, 2 | -2, 2 | -1, 2 |  0, 2 |  1, 2 | key:
-#          `-._,-' `-._,-' `-._,-' `-._,-' `-._,-' ,-' `-.
-#             | {04:} | {09:} | {15:} | {22:} |   | input |
-#             | -3, 3 | -2, 3 | -1, 3 |  0, 3 |   |  q, r |
-#              `-._,-' `-._,-' `-._,-' `-._,-'     `-._,-'"""
-
-    # prepare the provided board contents as strings, formatted to size.
-    ran = range(-3, +3+1)
-    cells = []
-    for qr in [(q,r) for q in ran for r in ran if -q-r in ran]:
-        if qr in board_dict:
-            cell = str(board_dict[qr]).center(5)
-        else:
-            cell = "     " # 5 spaces will fill a cell
-        cells.append(cell)
-
-    # fill in the template to create the board drawing, then print!
-    board = template.format(message, *cells)
-    print(board)
-
-
 
 class MaxNPlayer:
     def __init__(self, colour):
@@ -479,6 +254,8 @@ class MaxNPlayer:
                 'b': [(0,3),(1,2),(2,1),(3,0)]
         }
 
+        self.is_greedy = True
+
         #load the weight
         f = open("/Users/zhangdanielle/code/COMP30024/part-B/weight",'r')
         all_weights = f.readlines()
@@ -504,48 +281,84 @@ class MaxNPlayer:
         actions.
         """
 
-        tree_depth = 3
-        c_curr_player = self.colour
-        head_state = State(self.colour, self.board, self.exited_piece_count, None, None)
-        node = Node(tree_depth, c_curr_player, head_state, self.weight)
-        #This is the node after the best move has been made.
-        bestNode = None
+        if self.is_greedy == False:
+            tree_depth = 3
+            c_curr_player = self.colour
+            head_state = State(self.colour, self.board, self.exited_piece_count, None, None)
+            node = Node(tree_depth, c_curr_player, head_state, self.weight)
+            #This is the node after the best move has been made.
+            bestNode = None
 
-        t_max_value = (-maxsize, -maxsize, -maxsize)
-        i_eval_depth = tree_depth - 1
+            t_max_value = (-maxsize, -maxsize, -maxsize)
+            i_eval_depth = tree_depth - 1
 
-        #Determine the best move
-        for child in node.children:
+            #Determine the best move
+            for child in node.children:
 
-            t_val = MaxN(child, i_eval_depth, next_colour[c_curr_player])
-            if child.state.action[0] == "EXIT":
-                t_max_value = t_val
-                bestNode = child
-                break
-            elif max(t_max_value[player_index[c_curr_player]],
-                   t_val[player_index[c_curr_player]]) == t_val[player_index[c_curr_player]]:
-                t_max_value = t_val
-                bestNode = child
+                t_val = MaxN(child, i_eval_depth, next_colour[c_curr_player])
+                if child.state.action[0] == "EXIT":
+                    t_max_value = t_val
+                    bestNode = child
+                    break
+                elif max(t_max_value[player_index[c_curr_player]],
+                       t_val[player_index[c_curr_player]]) == t_val[player_index[c_curr_player]]:
+                    t_max_value = t_val
+                    bestNode = child
 
 
-        #write the evaluation feature values and evaluation value into the file
-        if bestNode != None:
+            #write the evaluation feature values and evaluation value into the file
+
+            if bestNode == None:
+                bestNode = node
+                bestNode.state.action = ("PASS",None)
+
             f = open(self.filename,'a+')
             line =""
             new_evaluation_feature = features(self.colour, bestNode.state)
             for i in range(len(new_evaluation_feature)):
                 line += str(new_evaluation_feature[i])
                 line +=','
-            line += str(evaluate(self.colour, bestNode.state, head_state, self.weight))
+            line += str(evaluate(self.colour, bestNode.state, self.weight))
             line += '\n'
             f.write(line)
             f.close()
+            return bestNode.state.action
+        #player in greedy mode
+        else:
+            output = None
+            eval = None
+            feature = None
+            for i in range(len(self.board[self.colour])):
+                for action in possible_action(i, self.board, self.colour):
+                    new_board = board_update(self.colour, self.board, action)
+                    current_state = State(self.colour,new_board, self.exited_piece_count, output, None)
+                    new_eval = evaluate(self.colour, current_state, self.weight)
+                    if eval == None or new_eval > eval:
+                        eval = new_eval
+                        output = action
+                        feature = features(self.colour, current_state)
+                    if action[0] == "EXIT":
+                        eval = new_eval
+                        output = action
+                        feature = features(self.colour, current_state)
+                        break
+            if output == None:
+                output = ("PASS",None)
+                current_state = State(self.colour,self.board, self.exited_piece_count, output, None)
+                eval = evaluate(self.colour, current_state, self.weight)
+                feature = features(self.colour, current_state)
 
-        if bestNode == None:
-            bestNode = node
-            bestNode.state.action = ("PASS",None)
+            f = open(self.filename,'a+')
+            line =""
+            for i in range(len(feature)):
+                line += str(feature[i])
+                line +=','
+            line += str(eval)
+            line += '\n'
+            f.write(line)
+            f.close()
+            return output
 
-        return bestNode.state.action
 
     def update(self, colour, action):
         #update the board reprensentation
@@ -553,4 +366,8 @@ class MaxNPlayer:
         #update the exited pieces count
         if action[0] == "EXIT":
             self.exited_piece_count[colour[0]] += 1
+        #update the player mode
+        #the player no longer plays greedy strategy when the closest oppoenent are two hexes away
+        if closest_opponent(self.colour, self.board) <= greedy_distance:
+            self.is_greedy = False
         return
