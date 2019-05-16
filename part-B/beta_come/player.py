@@ -13,7 +13,6 @@ board_dict = {          #Representation of the board
     'b': [(0,3),(1,2),(2,1),(3,0)]
 }
 
-#May have to define this depending on how the sequence of players is decided by the referee program.
 next_colour = {         #To decide which player's turn is next
     'r':'g',
     'g':'b',
@@ -73,6 +72,24 @@ def board_update(player, board_dict, action):
 
     return new_board
 
+#This function sorts the pieces based on the distance to their exit positions
+def sorted_pieces(board, colour):
+
+    computationList = []
+    orderedList = []
+
+    for piece in board[colour]:
+        computationList.append((exit_distance(piece, colour), piece))
+
+    computationList = sorted(computationList)
+
+    for i, j in computationList:
+        orderedList.append(j)
+
+    board[colour] = orderedList
+
+    return
+
 #a class to represent the state of the game from the perspective of the given player
 class State(object):
     def __init__(self, colour, board, exited_piece_count, action, previous_state):
@@ -102,7 +119,7 @@ def features(colour,state):
     else:
         n_pieces_missing = n_pieces_left - n_pieces_on_board
     if n_pieces_on_board != 0:
-        avg_exit_distance = sum_squared_distance_to_exit(board, colour)/n_pieces_on_board
+        avg_exit_distance = sum_distance_to_exit(board, colour)/n_pieces_on_board
     else:
         avg_exit_distance = 0
     missing_oppoenent_pieces = 0
@@ -118,13 +135,13 @@ def hex_distance(coordinate1, coordinate2):
     + abs(coordinate1[0]+coordinate1[1]-coordinate2[0]-coordinate2[1])
     +abs(coordinate1[1]-coordinate2[1]))/2
 
-def sum_squared_distance_to_exit(board, colour):
+def sum_distance_to_exit(board, colour):
     sum=0
     for piece in board[colour]:
-        sum += squared_exit_distance(piece, colour)
+        sum += exit_distance(piece, colour)
     return sum
 
-def squared_exit_distance(piece, colour):
+def exit_distance(piece, colour):
     min_dist = 36
     for exit in exit_dict[colour]:
         distance = hex_distance(piece, exit)
@@ -132,7 +149,7 @@ def squared_exit_distance(piece, colour):
             min_dist=distance
     if min_dist == 0:
         min_dist += 1
-    return min_dist
+    return min_dist*min_dist
 
 #evaluate the state from the given player's perspective
 def evaluate(colour, current_state,previous_state, weight):
@@ -185,6 +202,15 @@ class Node(object):
             length = len(colourPieces) #Length of the list of all the tuples
                                        #of all the positions of the specific colour
             i = 0
+            #the number of pieces on the board for this player is
+            # higher than the number of pieces need to exit in order for the players
+            #to win. reduce the branching factor and only expand the possible actions
+            #of the pieces that are the closest to the exit positions
+            '''if length > 4 - self.state.exited_piece_count[self.colour]:'''
+            sorted_pieces(self.state.board, self.colour)
+            if length >= 4:
+                length  = 3
+            '''length *=2/3'''
             n_action = 0
             while(i < length):
 
@@ -454,7 +480,7 @@ class MaxNPlayer:
         }
 
         #load the weight
-        f = open("/Users/zhangdanielle/code/COMP30024/part-B/beta_come/weight",'r')
+        f = open("/Users/zhangdanielle/code/COMP30024/part-B/weight",'r')
         all_weights = f.readlines()
         f.close()
         latest_weight = all_weights[-1].split(',')
@@ -464,7 +490,7 @@ class MaxNPlayer:
         #(n_pieces_missing,n_pieces_left,sum_exit_distance,oppoenent_pieces)
         self.weight = latest_weight
         #create a new file to record the evaluation for every output action
-        self.filename = "/Users/zhangdanielle/code/COMP30024/part-B/beta_come/"+colour
+        self.filename = "/Users/zhangdanielle/code/COMP30024/part-B/"+colour
 
     def action(self):
         """
@@ -501,19 +527,14 @@ class MaxNPlayer:
                 t_max_value = t_val
                 bestNode = child
 
-        '''#take the risk
-        if t_max_value[player_index[self.colour]] == 0:
-            if secondBest != None:
-                bestNode = secondBest'''
 
         #write the evaluation feature values and evaluation value into the file
         if bestNode != None:
             f = open(self.filename,'a+')
             line =""
-            previous_evaluation_feature = features(self.colour, head_state)
             new_evaluation_feature = features(self.colour, bestNode.state)
-            for i in range(len(previous_evaluation_feature)):
-                line += str(previous_evaluation_feature[i]-new_evaluation_feature[i])
+            for i in range(len(new_evaluation_feature)):
+                line += str(new_evaluation_feature[i])
                 line +=','
             line += str(evaluate(self.colour, bestNode.state, head_state, self.weight))
             line += '\n'
