@@ -151,8 +151,8 @@ class Node(object):
             #to win. reduce the branching factor and only expand the possible actions
             #of the pieces that are the closest to the exit positions
             '''if length > 4 - self.state.exited_piece_count[self.colour]:'''
-            sorted_pieces(self.state.board, self.colour)
-            if length >= 4:
+            if length > 4:
+                sorted_pieces(self.state.board, self.colour)
                 length  = 3
             '''length *=2/3'''
             n_action = 0
