@@ -384,7 +384,8 @@ class MaxNPlayer:
         #the player no longer plays greedy strategy when the closest oppoenent are two hexes away
         if self.is_greedy == True and closest_opponent(self.colour, self.board) <= greedy_distance:
             self.is_greedy = False
-        elif len(self.board[self.colour]) > 4-self.exited_piece_count[self.colour] and self.exited_piece_count[self.colour]>0:
+        elif len(self.board[self.colour]) > 4-self.exited_piece_count[self.colour]:
+            # and self.exited_piece_count[self.colour]>0
             self.is_greedy = True
 
 
