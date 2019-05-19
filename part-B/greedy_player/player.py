@@ -13,17 +13,18 @@ class GreedyPlayer:
                     'b': [(0,3),(1,2),(2,1),(3,0)]
             }
             #load the weight
-            f = open("/Users/zhangdanielle/code/COMP30024/part-B/weight",'r')
+            '''f = open("/Users/zhangdanielle/code/COMP30024/part-B/weight",'r')
             all_weights = f.readlines()
             f.close()
             latest_weight = all_weights[-1].split(',')
             for i in range(len(latest_weight)):
-                latest_weight[i] = float(latest_weight[i])
+                latest_weight[i] = float(latest_weight[i])'''
+            latest_weight = [-0.60735,-6.07406,-6.07713,0.61072]
             #weights for evaluation Function
             #(n_pieces_missing,n_pieces_left,sum_exit_distance,oppoenent_pieces)
             self.weight = latest_weight
             #create a new file to record the evaluation for every output action
-            self.filename = "/Users/zhangdanielle/code/COMP30024/part-B/"+colour
+            #self.filename = "/Users/zhangdanielle/code/COMP30024/part-B/"+colour
 
 
     def action(self):
@@ -51,7 +52,7 @@ class GreedyPlayer:
             eval = evaluate(self.colour, current_state, self.weight)
             feature = features(self.colour, current_state)
 
-        f = open(self.filename,'a+')
+        '''f = open(self.filename,'a+')
         line =""
         for i in range(len(feature)):
             line += str(feature[i])
@@ -59,7 +60,7 @@ class GreedyPlayer:
         line += str(eval)
         line += '\n'
         f.write(line)
-        f.close()
+        f.close()'''
         return output
 
     def update(self, colour, action):

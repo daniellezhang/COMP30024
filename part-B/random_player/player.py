@@ -13,12 +13,13 @@ class RandomPlayer:
                     'b': [(0,3),(1,2),(2,1),(3,0)]
             }
             #load the weight
-            f = open("/Users/zhangdanielle/code/COMP30024/part-B/weight",'r')
+            '''f = open("/Users/zhangdanielle/code/COMP30024/part-B/weight",'r')
             all_weights = f.readlines()
             f.close()
             latest_weight = all_weights[-1].split(',')
             for i in range(len(latest_weight)):
-                latest_weight[i] = float(latest_weight[i])
+                latest_weight[i] = float(latest_weight[i])'''
+            latest_weight = [-0.60735,-6.07406,-6.07713,0.61072]
             #weights for evaluation Function
             #(n_pieces_missing,n_pieces_left,sum_exit_distance,oppoenent_pieces)
             self.weight = latest_weight
@@ -39,7 +40,7 @@ class RandomPlayer:
             output = ("PASS",None)
         new_board = board_update(self.colour, self.board, output)
         current_state = State(self.colour,new_board, self.exited_piece_count, output, None)
-        f = open(self.filename,'a+')
+        '''f = open(self.filename,'a+')
         line =""
         new_evaluation_feature = features(self.colour, current_state)
         for i in range(len(new_evaluation_feature)):
@@ -48,7 +49,7 @@ class RandomPlayer:
         line += str(evaluate(self.colour, current_state, self.weight))
         line += '\n'
         f.write(line)
-        f.close()
+        f.close()'''
         return output
 
     def update(self, colour, action):

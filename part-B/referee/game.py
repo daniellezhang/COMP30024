@@ -229,20 +229,20 @@ class Chexers:
                     if score > hiscore:
                         winner = colour
                         hiscore = score
-                f = open("/Users/zhangdanielle/code/COMP30024/part-B/beta_come/result",'w+')
+                '''f = open("/Users/zhangdanielle/code/COMP30024/part-B/result",'a+')
                 f.write(winner)
                 for colour in "rgb":
                     f.write(',%d'%self.score[colour])
                 f.write('\n')
-                f.close()
+                f.close()'''
                 result = f"winner: {_COL_NAME[winner]}"
             else:
-                f = open("/Users/zhangdanielle/code/COMP30024/part-B/beta_come/result",'w+')
+                '''f = open("/Users/zhangdanielle/code/COMP30024/part-B/result",'a+')
                 f.write("draw")
                 for colour in "rgb":
                     f.write(',%d'%self.score[colour])
                 f.write('\n')
-                f.close()
+                f.close()'''
                 result = f"draw detected: {self.drawmsg}"
             self._log("over", result)
             self._end_log()

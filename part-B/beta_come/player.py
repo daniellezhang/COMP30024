@@ -22,8 +22,9 @@ player_index = {
 
 }
 
+
 #threshold to turn off the player's greedy mode
-greedy_distance = 1
+greedy_distance = 2
 
 #generate values for feature that are used for evaluation function
 #from the perspective of the given player
@@ -37,7 +38,10 @@ def features(colour,state):
     else:
         n_pieces_missing = n_pieces_left - n_pieces_on_board
     if n_pieces_on_board != 0:
-        avg_exit_distance = sum_distance_to_exit(board, colour)/n_pieces_on_board
+        n_piece = n_pieces_on_board
+        if n_pieces_on_board >=4:
+            n_piece = 3
+        avg_exit_distance = average_distance(board, colour, n_piece)
     else:
         avg_exit_distance = 0
     missing_oppoenent_pieces = 0
@@ -53,6 +57,20 @@ def hex_distance(coordinate1, coordinate2):
     + abs(coordinate1[0]+coordinate1[1]-coordinate2[0]-coordinate2[1])
     +abs(coordinate1[1]-coordinate2[1]))/2
 
+
+def average_distance(board, colour, n_piece):
+    distance_list = []
+    orderedList = []
+    sum = 0
+
+    for piece in board[colour]:
+        distance_list.append((exit_distance(piece, colour), piece))
+    distance_list = sorted(distance_list)
+    for i in range(n_piece):
+        sum += distance_list[i][0]
+    sum/=n_piece
+
+    return sum
 def sum_distance_to_exit(board, colour):
     sum=0
     for piece in board[colour]:
@@ -151,7 +169,7 @@ class Node(object):
             #to win. reduce the branching factor and only expand the possible actions
             #of the pieces that are the closest to the exit positions
             '''if length > 4 - self.state.exited_piece_count[self.colour]:'''
-            if length > 4:
+            if length >=4:
                 sorted_pieces(self.state.board, self.colour)
                 length  = 3
             '''length *=2/3'''
@@ -257,17 +275,18 @@ class MaxNPlayer:
         self.is_greedy = True
 
         #load the weight
-        f = open("/Users/zhangdanielle/code/COMP30024/part-B/weight",'r')
+        '''f = open("/Users/zhangdanielle/code/COMP30024/part-B/weight",'r')
         all_weights = f.readlines()
         f.close()
-        latest_weight = all_weights[-1].split(',')
+        latest_weight = all_Weights[-1].split(',')
         for i in range(len(latest_weight)):
-            latest_weight[i] = float(latest_weight[i])
+            latest_weight[i] = float(latest_weight[i])'''
+        latest_weight = [-0.60735,-6.07406,-6.07713,0.61072]
         #weights for evaluation Function
         #(n_pieces_missing,n_pieces_left,sum_exit_distance,oppoenent_pieces)
         self.weight = latest_weight
         #create a new file to record the evaluation for every output action
-        self.filename = "/Users/zhangdanielle/code/COMP30024/part-B/"+colour
+        #self.filename = "/Users/zhangdanielle/code/COMP30024/part-B/"+colour
 
     def action(self):
         """
@@ -312,7 +331,7 @@ class MaxNPlayer:
                 bestNode = node
                 bestNode.state.action = ("PASS",None)
 
-            f = open(self.filename,'a+')
+            '''f = open(self.filename,'a+')
             line =""
             new_evaluation_feature = features(self.colour, bestNode.state)
             for i in range(len(new_evaluation_feature)):
@@ -321,7 +340,7 @@ class MaxNPlayer:
             line += str(evaluate(self.colour, bestNode.state, self.weight))
             line += '\n'
             f.write(line)
-            f.close()
+            f.close()'''
             return bestNode.state.action
         #player in greedy mode
         else:
@@ -337,18 +356,13 @@ class MaxNPlayer:
                         eval = new_eval
                         output = action
                         feature = features(self.colour, current_state)
-                    if action[0] == "EXIT":
-                        eval = new_eval
-                        output = action
-                        feature = features(self.colour, current_state)
-                        break
             if output == None:
                 output = ("PASS",None)
                 current_state = State(self.colour,self.board, self.exited_piece_count, output, None)
                 eval = evaluate(self.colour, current_state, self.weight)
                 feature = features(self.colour, current_state)
 
-            f = open(self.filename,'a+')
+            '''f = open(self.filename,'a+')
             line =""
             for i in range(len(feature)):
                 line += str(feature[i])
@@ -356,7 +370,7 @@ class MaxNPlayer:
             line += str(eval)
             line += '\n'
             f.write(line)
-            f.close()
+            f.close()'''
             return output
 
 
@@ -368,6 +382,10 @@ class MaxNPlayer:
             self.exited_piece_count[colour[0]] += 1
         #update the player mode
         #the player no longer plays greedy strategy when the closest oppoenent are two hexes away
-        if closest_opponent(self.colour, self.board) <= greedy_distance:
+        if self.is_greedy == True and closest_opponent(self.colour, self.board) <= greedy_distance:
             self.is_greedy = False
+        elif len(self.board[self.colour]) > 4-self.exited_piece_count[self.colour] and self.exited_piece_count[self.colour]>0:
+            self.is_greedy = True
+
+
         return

@@ -26,21 +26,29 @@ colour_dict = {
 
 training_rate = 0.001
 learning_rate = 0.001
-training_epoch = 10
-converge_delta = 0.00001
+training_epoch = 5
+converge_delta = 0.0001
 is_converging = False
+winning = 0.1
+losing = -0.1
+gamma = 0.99
 
 command_list = [
-"python3 -m referee beta_come beta_come beta_come",
-"python3 -m referee beta_come random_player random_player",
-"python3 -m referee beta_come greedy_player greedy_player",
-"python3 -m referee beta_come random_player greedy_player"
+#"python3 -m referee random_player beta_come beta_come",
+#"python3 -m referee random_player random_player beta_come",
+"python3 -m referee random_player greedy_player beta_come",
+"python3 -m referee greedy_player beta_come random_player",
+"python3 -m referee beta_come random_player greedy_player",
+"python3 -m referee greedy_player random_player beta_come"
 ]
-
+#command = "python3 -m referee beta_come random_player greedy_player"
 n_command = 0
-while(is_converging == False):
+threshold = 100
+while(is_converging == False and n_command < threshold):
     command = command_list[n_command%len(command_list)]
-    print("#iteration: %d,command:%s"%(n_command,command))
+    log = open("/Users/zhangdanielle/code/COMP30024/part-B/log",'w+')
+    log.write("#iteration: %d,command:%s\n"%(n_command+1,command))
+    log.close()
     #play a game with the given command
     call(command, shell = True)
     #setting up
@@ -56,8 +64,6 @@ while(is_converging == False):
     latest_result = all_result[-1].split(',')
     result = latest_result[0]
     winner = None
-    winning = 1
-    losing = -1
     reward = 0
 
     x = []
@@ -66,19 +72,22 @@ while(is_converging == False):
     exited_count = latest_result[1:]
     for i in range(len(exited_count)):
         exited_count[i] = int(exited_count[i])
-        if exited_count[i] == 0:
+        if exited_count[i] < 4:
             reward = losing
         else:
-            reward = winning *exited_count[i]/4
+            reward = winning
         filename = "/Users/zhangdanielle/code/COMP30024/part-B/"+index_dict[i]
         f=open(filename, 'r')
         lines = f.readlines()
-        n_samples += len(lines)
+        n_lines = len(lines)
+        n_samples += n_lines
+        discount = 1
         for line in lines:
             features = line.split(',')[:-1]
             for i in range(len(features)):
                 features[i] = float(features[i])
-            eval = float(features[-1])+reward
+            eval = float(features[-1])+reward*discount
+            discount *= gamma
             x.append(features)
             y.append([eval])
 
@@ -92,8 +101,6 @@ while(is_converging == False):
     # tf Graph Input
     X = tf.placeholder(shape = (n_samples,dimension), dtype = tf.float32)
     Y = tf.placeholder(shape = (n_samples,1),dtype = tf.float32)
-    print(X.shape)
-    print(Y.shape)
 
     pred = tf.multiply(X,W)
     # Mean squared error
@@ -140,7 +147,7 @@ while(is_converging == False):
         temp_converage  = True
         #check if the weight is converging`
         for i in range(len(deltas)):
-            if deltas[i] >= converge_delta:
+            if abs(deltas[i]) >= converge_delta:
                 temp_converage = False
                 break
             is_converaging = temp_converage
